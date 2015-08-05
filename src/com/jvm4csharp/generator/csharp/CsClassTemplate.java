@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 //TODO: generics
 public class CsClassTemplate implements ICsItemTemplate {
     private final Class _class;
-    private final int _indentationLevel;
+    private final CsClassTemplate _declaringClass;
     private final CsType _classCsType;
     private final CsType _superclassCsType;
     private final List<CsType> _implementedInterfacesCsTypes;
@@ -21,9 +21,9 @@ public class CsClassTemplate implements ICsItemTemplate {
     private final List<CsConstructorTemplate> _constructors;
     private final List<CsClassTemplate> _classes;
 
-    public CsClassTemplate(Class clazz, int indentationLevel) {
+    public CsClassTemplate(Class clazz, CsClassTemplate declaringClass) {
         _class = clazz;
-        _indentationLevel = indentationLevel;
+        _declaringClass = declaringClass;
         _classCsType = CsConverter.GetClrType(_class);
         _superclassCsType = CsConverter.GetClrType(_class.getSuperclass());
 
@@ -49,7 +49,7 @@ public class CsClassTemplate implements ICsItemTemplate {
 
         _classes = ReflectionHelper.getPublicDeclaredClasses(_class)
                 .stream()
-                .map(x -> new CsClassTemplate(x, indentationLevel + 1))
+                .map(x -> new CsClassTemplate(x, this))
                 .collect(Collectors.toList());
     }
 
@@ -90,19 +90,26 @@ public class CsClassTemplate implements ICsItemTemplate {
             generateResults.add(template.generate());
 
         for (int i = 0; i < generateResults.size(); i++) {
-            generateResults.get(i).renderTo(result, _indentationLevel + 1);
+            generateResults.get(i).renderTo(result, getNestingLevel() + 1);
 
             if (i < generateResults.size() - 2)
                 result.newLine();
         }
 
         result.append(TemplateHelper.BLOCK_CLOSE);
-
         return result;
     }
 
     @Override
     public CsType[] getReferencedCsTypes() {
         return new CsType[0];
+    }
+
+    public int getNestingLevel(){
+        int result = 0;
+        if (_declaringClass != null)
+            result = _declaringClass.getNestingLevel() + 1;
+
+        return result;
     }
 }

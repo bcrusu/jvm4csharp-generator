@@ -5,8 +5,8 @@ import java.util.Set;
 
 public class CsType {
     public CsType(){
-        NamespacesUsed = new HashSet<>();
+        namespacesUsed = new HashSet<>();
     }
-    public String DisplayName;
-    public Set<String> NamespacesUsed;
+    public String displayName;
+    public Set<String> namespacesUsed;
 }

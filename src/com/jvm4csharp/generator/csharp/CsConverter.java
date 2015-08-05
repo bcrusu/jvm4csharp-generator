@@ -2,25 +2,31 @@ package com.jvm4csharp.generator.csharp;
 
 public final class CsConverter {
     public static CsType GetClrType(Class clazz) {
+        if (clazz == Void.TYPE){
+            CsType result = new CsType();
+            result.displayName = "void";
+            return result;
+        }
+
         if (clazz.isPrimitive()) {
             CsType result = new CsType();
 
             if (clazz == Boolean.TYPE)
-                result.DisplayName = "bool";
+                result.displayName = "bool";
             else if (clazz == Byte.TYPE)
-                result.DisplayName = "byte";
+                result.displayName = "byte";
             else if (clazz == Character.TYPE)
-                result.DisplayName = "char";
+                result.displayName = "char";
             else if (clazz == Short.TYPE)
-                result.DisplayName = "short";
+                result.displayName = "short";
             else if (clazz == Integer.TYPE)
-                result.DisplayName = "int";
+                result.displayName = "int";
             else if (clazz == Long.TYPE)
-                result.DisplayName = "long";
+                result.displayName = "long";
             else if (clazz == Float.TYPE)
-                result.DisplayName = "float";
+                result.displayName = "float";
             else if (clazz == Float.TYPE)
-                result.DisplayName = "double";
+                result.displayName = "double";
             else
                 throw new IllegalArgumentException("Unrecognized primitive type");
             return result;
@@ -29,28 +35,28 @@ public final class CsConverter {
         if (clazz.isArray()) {
             CsType result = new CsType();
             Class elementType = clazz.getComponentType();
-            result.NamespacesUsed.add("jvm4csharp.ArrayUtils");
+            result.namespacesUsed.add("jvm4csharp.ArrayUtils");
 
             if (elementType == Boolean.TYPE)
-                result.DisplayName = "BooleanArray";
+                result.displayName = "BooleanArray";
             if (elementType == Byte.TYPE)
-                result.DisplayName = "ByteArray";
+                result.displayName = "ByteArray";
             if (elementType == Character.TYPE)
-                result.DisplayName = "CharArray";
+                result.displayName = "CharArray";
             if (elementType == Short.TYPE)
-                result.DisplayName = "ShortArray";
+                result.displayName = "ShortArray";
             if (elementType == Integer.TYPE)
-                result.DisplayName = "IntArray";
+                result.displayName = "IntArray";
             if (elementType == Long.TYPE)
-                result.DisplayName = "LongArray";
+                result.displayName = "LongArray";
             if (elementType == Float.TYPE)
-                result.DisplayName = "FloatArray";
+                result.displayName = "FloatArray";
             if (elementType == Float.TYPE)
-                result.DisplayName = "DoubleArray";
+                result.displayName = "DoubleArray";
             else {
                 CsType elementCsType = GetClrType(elementType);
-                result.DisplayName = "ObjectArray<" + elementCsType.DisplayName + ">";
-                result.NamespacesUsed.addAll(elementCsType.NamespacesUsed);
+                result.displayName = "ObjectArray<" + elementCsType.displayName + ">";
+                result.namespacesUsed.addAll(elementCsType.namespacesUsed);
             }
 
             return result;
@@ -71,8 +77,8 @@ public final class CsConverter {
         String packageName = clazz.getPackage().getName();
 
         CsType result = new CsType();
-        result.DisplayName = clazz.getCanonicalName().substring(packageName.length()+ 1);
-        result.NamespacesUsed.add("jvm4csharp." + packageName);
+        result.displayName = clazz.getCanonicalName().substring(packageName.length()+ 1);
+        result.namespacesUsed.add("jvm4csharp." + packageName);
         return result;
     }
 }

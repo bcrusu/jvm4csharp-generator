@@ -69,30 +69,75 @@ public final class ReflectionHelper {
                 .filter(x -> isPublic(x))
                 .collect(Collectors.toList());
     }
-//TODO:
-    public static String GetInternalTypeName(Class clazz){
-        if (clazz.isPrimitive()){
+
+    public static List<Class> getPublicImplementedInterfaces(Class clazz) {
+        return Arrays.asList(clazz.getInterfaces())
+                .stream()
+                .filter(x -> isPublic(x))
+                .collect(Collectors.toList());
+    }
+
+    public static String GetInternalTypeName(Class clazz) {
+        String result;
+        if (clazz == Void.TYPE) {
+            return "V";
+        }
+
+        if (clazz.isPrimitive()) {
             if (clazz == Boolean.TYPE)
-                return "Z";
-            if (clazz == Byte.TYPE)
-                return "B";
-            if (clazz == Character.TYPE)
-                return "C";
-            if (clazz == Short.TYPE)
-                return "S";
-            if (clazz == Integer.TYPE)
-                return "I";
-            if (clazz == Long.TYPE)
-                return "J";
-            if (clazz == Float.TYPE)
-                return "F";
-            if (clazz == Float.TYPE)
-                return "D";
+                result = "Z";
+            else if (clazz == Byte.TYPE)
+                result = "B";
+            else if (clazz == Character.TYPE)
+                result = "C";
+            else if (clazz == Short.TYPE)
+                result = "S";
+            else if (clazz == Integer.TYPE)
+                result = "I";
+            else if (clazz == Long.TYPE)
+                result = "J";
+            else if (clazz == Float.TYPE)
+                result = "F";
+            else if (clazz == Float.TYPE)
+                result = "D";
+            else
+                throw new Error("Unrecognized primitive type.");
+        } else {
+            result = clazz.getCanonicalName();
+            result = result.replace('.', '/');
+            result = 'L' + result + ';';
         }
-        else if (clazz.isArray()){
 
-        }
+        if (clazz.isArray())
+            result = '[' + result;
 
-        throw new IllegalArgumentException();
+        return result;
+    }
+
+    public static String GetInternalSignature(Method method) {
+        StringBuilder result = new StringBuilder();
+        result.append('(');
+
+        Class[] parameterTypes = method.getParameterTypes();
+        for (Class parameterType : parameterTypes)
+            result.append(GetInternalTypeName(parameterType));
+
+        result.append(')');
+        result.append(GetInternalTypeName(method.getReturnType()));
+
+        return result.toString();
+    }
+
+    public static String GetInternalSignature(Constructor constructor) {
+        StringBuilder result = new StringBuilder();
+        result.append('(');
+
+        Class[] parameterTypes = constructor.getParameterTypes();
+        for (Class parameterType : parameterTypes)
+            result.append(GetInternalTypeName(parameterType));
+
+        result.append(")V");
+
+        return result.toString();
     }
 }

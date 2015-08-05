@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator;
 
-import com.jvm4csharp.generator.csharp.ClassTemplate;
+import com.jvm4csharp.generator.csharp.CsClassTemplate;
 import org.reflections.Reflections;
 import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
@@ -22,7 +22,7 @@ public class Main {
             allTypes = reflections.getAllTypes();
 
             for(String typeName : allTypes){
-                if (!typeName.startsWith("java.lang."))
+                if (!typeName.startsWith("java.lang.reflect"))
                     continue;
 
                 Class clazz = Class.forName(typeName);
@@ -32,11 +32,13 @@ public class Main {
                 if (clazz.getDeclaringClass() != null)
                     continue;
 
-                if (clazz.getFields().length == 0)
+                if (clazz.isInterface())
                     continue;
 
-                ClassTemplate template = new ClassTemplate(clazz);
-                String str = template.GenerateBody();
+                CsClassTemplate template = new CsClassTemplate(clazz, 0);
+                String str = template.generate().toString();
+
+                str += "1";
             }
         } catch (Exception e) {
             System.out.println(e);

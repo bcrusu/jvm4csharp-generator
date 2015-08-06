@@ -5,6 +5,8 @@ import java.util.LinkedList;
 public class GenerateResult {
     private final LinkedList<String> _lines;
     private StringBuilder _currentLine;
+    private String _name;
+    private String _path;
 
     public GenerateResult() {
         _lines = new LinkedList<>();
@@ -52,6 +54,22 @@ public class GenerateResult {
             gr.append(indentation);
             gr.appendNewLine(_currentLine.toString());
         }
+    }
+
+    public void setName(String name){
+        _name = name;
+    }
+
+    public String getName(){
+        return _name;
+    }
+
+    public void setPath(String path){
+        _path = path;
+    }
+
+    public String getPath(){
+        return _path;
     }
 
     @Override

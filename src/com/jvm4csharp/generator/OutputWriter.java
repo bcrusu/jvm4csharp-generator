@@ -1,6 +1,7 @@
 package com.jvm4csharp.generator;
 
-import java.io.File;
+import java.io.*;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
@@ -9,7 +10,7 @@ public class OutputWriter {
     private final String _outputPath;
     private final Set<String> _created;
 
-    public OutputWriter(String outputPath){
+    public OutputWriter(String outputPath) {
         _outputPath = outputPath;
         _created = new HashSet<>();
     }
@@ -27,12 +28,44 @@ public class OutputWriter {
         return true;
     }
 
-    public void ensurePackagePathExists(Package pack) {
-        String packageName = pack.getName();
-        String[] splits = packageName.split("\\.");
+    public void write(GenerateResult[] generateResults) {
+        for (GenerateResult generateResult : generateResults) {
+            String name = generateResult.getName();
+            String path = generateResult.getPath();
+
+            ensurePackagePathExists(path);
+            Path fullOutputPath = Paths.get(_outputPath, path, name);
+
+            try {
+                File file = fullOutputPath.toFile();
+                file.createNewFile();
+
+                try (FileOutputStream fos = new FileOutputStream(file);
+                     OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF8");
+                     BufferedWriter bw = new BufferedWriter(osw)) {
+                    bw.write(generateResult.toString());
+                }
+            } catch (UnsupportedEncodingException e) {
+                System.out.println("Could not find the UTF8 encoding. ");
+                System.out.println(e);
+                System.exit(-1);
+            } catch (FileNotFoundException e) {
+                System.out.print("BOOM! where is my file? ");
+                System.out.println(e);
+                System.exit(-1);
+            } catch (IOException e) {
+                System.out.print("Could not create output file: ");
+                System.out.println(e);
+                System.exit(-1);
+            }
+        }
+    }
+
+    private void ensurePackagePathExists(String path) {
+        String[] splits = path.split("\\\\");
 
         String currentPath = _outputPath;
-        for (String split : splits){
+        for (String split : splits) {
             currentPath = Paths.get(currentPath, split).toString();
             if (_created.contains(currentPath))
                 continue;

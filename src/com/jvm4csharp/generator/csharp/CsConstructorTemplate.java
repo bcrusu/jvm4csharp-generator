@@ -1,14 +1,13 @@
 package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.GenerateResult;
-import com.jvm4csharp.generator.IItemTemplate;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 
-public class CsConstructorTemplate implements ICsItemTemplate {
+public class CsConstructorTemplate implements ICsTemplate {
     private final Constructor _constructor;
     private final Class _declaringClass;
     private final CsType[] _parametersCsTypes;
@@ -20,14 +19,14 @@ public class CsConstructorTemplate implements ICsItemTemplate {
         Class[] parameterTypes = constructor.getParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsConverter.GetClrType(parameterTypes[i]);
+            _parametersCsTypes[i] = CsConverter.GetCsType(parameterTypes[i]);
         }
     }
 
     @Override
-    public GenerateResult generate() {
+    public GenerateResult[] generate() {
         String internalSignature = ReflectionHelper.GetInternalSignature(_constructor);
-        CsType declaringClassCsType = CsConverter.GetClrType(_declaringClass);
+        CsType declaringClassCsType = CsConverter.GetCsType(_declaringClass);
         Parameter[] parameters = _constructor.getParameters();
 
         GenerateResult result = new GenerateResult();
@@ -63,7 +62,9 @@ public class CsConstructorTemplate implements ICsItemTemplate {
         result.appendNewLine(");");
         result.append(TemplateHelper.BLOCK_CLOSE);
 
-        return result;
+        GenerateResult[] results = new GenerateResult[1];
+        results[0] = result;
+        return results;
     }
 
     @Override

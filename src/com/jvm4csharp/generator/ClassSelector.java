@@ -6,7 +6,6 @@ import org.reflections.scanners.SubTypesScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
-import java.lang.reflect.Modifier;
 import java.lang.Class;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,9 +25,6 @@ public class ClassSelector {
 
             try {
                 Class clazz = Class.forName(typeName);
-                if (!getShouldGenerateClass(clazz))
-                    continue;
-
                 result.add(clazz);
             } catch (ClassNotFoundException e) {
                 System.out.format("Could not load class: %1s", typeName);
@@ -38,6 +34,7 @@ public class ClassSelector {
         return result;
     }
 
+    //TODO: better class scanner - ignore non-public
     private static Reflections GetReflections() {
         List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
         classLoadersList.add(ClasspathHelper.contextClassLoader());
@@ -48,16 +45,5 @@ public class ClassSelector {
                 .setUrls(ClasspathHelper.forJavaClassPath()));
 
         return reflections;
-    }
-
-    private static boolean getShouldGenerateClass(Class clazz) {
-        int mod = clazz.getModifiers();
-        if (!Modifier.isPublic(mod))
-            return false;
-
-        if (clazz.getDeclaringClass() != null)
-            return false;
-
-        return true;
     }
 }

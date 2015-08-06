@@ -8,7 +8,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 //TODO: generics, var args
-public class CsMethodTemplate implements ICsItemTemplate {
+public class CsMethodTemplate implements ICsTemplate {
     private final Method _method;
     private final Class _declaringClass;
     private final CsType _returnCsType;
@@ -17,23 +17,23 @@ public class CsMethodTemplate implements ICsItemTemplate {
     public CsMethodTemplate(Method method, Class declaringClass) {
         _method = method;
         _declaringClass = declaringClass;
-        _returnCsType = CsConverter.GetClrType(method.getReturnType());
+        _returnCsType = CsConverter.GetCsType(method.getReturnType());
 
         Class[] parameterTypes = method.getParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsConverter.GetClrType(parameterTypes[i]);
+            _parametersCsTypes[i] = CsConverter.GetCsType(parameterTypes[i]);
         }
     }
 
     @Override
-    public GenerateResult generate() {
+    public GenerateResult[] generate() {
         //TODO: boolean isFinal = ReflectionHelper.isFinal(_method);
         boolean isStatic = ReflectionHelper.isStatic(_method);
 
         String name = _method.getName();
         String internalSignature = ReflectionHelper.GetInternalSignature(_method);
-        CsType declaringClassCsType = CsConverter.GetClrType(_declaringClass);
+        CsType declaringClassCsType = CsConverter.GetCsType(_declaringClass);
         Parameter[] parameters = _method.getParameters();
         Class returnType = _method.getReturnType();
 
@@ -99,7 +99,9 @@ public class CsMethodTemplate implements ICsItemTemplate {
         result.appendNewLine(");");
         result.append(TemplateHelper.BLOCK_CLOSE);
 
-        return result;
+        GenerateResult[] results = new GenerateResult[1];
+        results[0] = result;
+        return results;
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.jvm4csharp.generator.csharp;
 
 public final class CsConverter {
-    public static CsType GetClrType(Class clazz) {
+    public static CsType GetCsType(Class clazz) {
         if (clazz == Void.TYPE){
             CsType result = new CsType();
             result.displayName = "void";
@@ -54,7 +54,7 @@ public final class CsConverter {
             if (elementType == Float.TYPE)
                 result.displayName = "DoubleArray";
             else {
-                CsType elementCsType = GetClrType(elementType);
+                CsType elementCsType = GetCsType(elementType);
                 result.displayName = "ObjectArray<" + elementCsType.displayName + ">";
                 result.namespacesUsed.addAll(elementCsType.namespacesUsed);
             }

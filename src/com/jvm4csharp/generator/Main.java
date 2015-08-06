@@ -1,10 +1,12 @@
 package com.jvm4csharp.generator;
 
+import com.jvm4csharp.generator.csharp.CsProxyGenerator;
+
 import java.util.LinkedList;
 
 public class Main {
     public static void main(String[] args) {
-        String outputDirectory = "E:\\gen_out";
+        String outputDirectory = "C:\\work\\gen_out";
 
         OutputWriter outputWriter = new OutputWriter(outputDirectory);
         if (!outputWriter.isValidOutputDirectory()) {
@@ -15,13 +17,23 @@ public class Main {
         ClassSelector classSelector = new ClassSelector();
         LinkedList<Class> classesToGenerate = classSelector.getClasses("java.lang");
 
-        for (Class clazz : classesToGenerate) {
-            System.out.format("Generating class: %1s", clazz.getName());
-            outputWriter.ensurePackagePathExists(clazz.getPackage());
+        IProxyGenerator generator = getProxyGenerator();
 
-            System.out.println();
+        for (Class clazz : classesToGenerate) {
+            if (!generator.canGenerate(clazz))
+                continue;
+
+            System.out.format("Generating class: %1s", clazz.getName());
+
+            GenerateResult[] generateResults = generator.generate(clazz);
+
+            outputWriter.write(generateResults);
         }
 
         System.out.format("Done.");
+    }
+
+    private static IProxyGenerator getProxyGenerator() {
+        return new CsProxyGenerator();
     }
 }

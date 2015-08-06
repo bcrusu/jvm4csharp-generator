@@ -6,7 +6,7 @@ import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Field;
 
-public class CsPropertyTemplate implements ICsItemTemplate {
+public class CsPropertyTemplate implements ICsTemplate {
     private final Field _field;
     private final CsType _fieldCsType;
     private Class _declaringClass;
@@ -14,18 +14,18 @@ public class CsPropertyTemplate implements ICsItemTemplate {
     public CsPropertyTemplate(Field field, Class declaringClass) {
 
         _field = field;
-        _fieldCsType = CsConverter.GetClrType(_field.getType());
+        _fieldCsType = CsConverter.GetCsType(_field.getType());
         _declaringClass = declaringClass;
     }
 
     @Override
-    public GenerateResult generate() {
+    public GenerateResult[] generate() {
         boolean isFinal = ReflectionHelper.isFinal(_field);
         boolean isStatic = ReflectionHelper.isStatic(_field);
         String name = _field.getName();
 
         String internalTypeName = ReflectionHelper.GetInternalTypeName(_field.getType());
-        CsType declaringClassCsType = CsConverter.GetClrType(_declaringClass);
+        CsType declaringClassCsType = CsConverter.GetCsType(_declaringClass);
 
 
         GenerateResult result = new GenerateResult();
@@ -88,7 +88,9 @@ public class CsPropertyTemplate implements ICsItemTemplate {
 
         result.append(TemplateHelper.BLOCK_CLOSE);
 
-        return result;
+        GenerateResult[] results = new GenerateResult[1];
+        results[0] = result;
+        return results;
     }
 
     public CsType[] getReferencedCsTypes() {

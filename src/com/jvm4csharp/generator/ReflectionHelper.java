@@ -103,10 +103,9 @@ public final class ReflectionHelper {
                 .collect(Collectors.toList());
     }
 
-    public static List<Class> getPublicImplementedInterfaces(Class clazz) {
-        return Arrays.asList(clazz.getInterfaces())
+    public static List<Type> getImplementedInterfaces(Class clazz) {
+        return Arrays.asList(clazz.getGenericInterfaces())
                 .stream()
-                .filter(x -> isPublic(x))
                 .collect(Collectors.toList());
     }
 
@@ -149,30 +148,29 @@ public final class ReflectionHelper {
         return result;
     }
 
-    public static String GetInternalSignature(Method method) {
+    public static String GetInternalSignature(Executable executable){
         StringBuilder result = new StringBuilder();
         result.append('(');
 
-        Class[] parameterTypes = method.getParameterTypes();
+        Class[] parameterTypes = executable.getParameterTypes();
         for (Class parameterType : parameterTypes)
             result.append(GetInternalTypeName(parameterType));
 
         result.append(')');
-        result.append(GetInternalTypeName(method.getReturnType()));
+        return result.toString();
+    }
 
+    public static String GetInternalSignature(Method method) {
+        StringBuilder result = new StringBuilder();
+        result.append(GetInternalSignature((Executable)method));
+        result.append(GetInternalTypeName(method.getReturnType()));
         return result.toString();
     }
 
     public static String GetInternalSignature(Constructor constructor) {
         StringBuilder result = new StringBuilder();
-        result.append('(');
-
-        Class[] parameterTypes = constructor.getParameterTypes();
-        for (Class parameterType : parameterTypes)
-            result.append(GetInternalTypeName(parameterType));
-
-        result.append(")V");
-
+        result.append(GetInternalSignature((Executable)constructor));
+        result.append(GetInternalTypeName(Void.TYPE));
         return result.toString();
     }
 

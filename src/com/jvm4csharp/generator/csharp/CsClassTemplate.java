@@ -9,7 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-//TODO: generics
 public class CsClassTemplate implements ICsTemplate {
     private final Class _class;
     private final CsType _classCsType;
@@ -23,29 +22,26 @@ public class CsClassTemplate implements ICsTemplate {
 
     public CsClassTemplate(Class clazz) {
         _class = clazz;
-        _classCsType = CsConverter.GetCsType(_class);
-        _superclassCsType = CsConverter.GetCsType(_class.getSuperclass());
+        _classCsType = CsConverter.getCsType(_class);
+        _superclassCsType = CsConverter.getCsType(_class.getGenericSuperclass());
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
                 .stream()
-                .map(CsConverter::GetCsType)
+                .map(CsConverter::getCsType)
                 .collect(Collectors.toList());
 
         _fields = ReflectionHelper.getPublicDeclaredFields(_class)
                 .stream()
-                .filter(x -> !x.isSynthetic())
                 .map(x -> new CsPropertyTemplate(x, _class))
                 .collect(Collectors.toList());
 
         _methods = ReflectionHelper.getPublicDeclaredMethods(_class)
                 .stream()
-                .filter(x -> !x.isSynthetic())
                 .map(x -> new CsMethodTemplate(x, _class))
                 .collect(Collectors.toList());
 
         _constructors = ReflectionHelper.getPublicDeclaredConstructors(_class)
                 .stream()
-                .filter(x -> !x.isSynthetic())
                 .map(x -> new CsConstructorTemplate(x, _class))
                 .collect(Collectors.toList());
 
@@ -68,20 +64,21 @@ public class CsClassTemplate implements ICsTemplate {
         result.append(internalTypeName);
         result.appendNewLine("\")]");
 
-        result.append("public partial");
+        result.append("public");
         if (isAbstract)
             result.append(" abstract");
         if (isFinal)
             result.append(" sealed");
-        result.append(" class ");
+        result.append(" partial class ");
         result.append(_classCsType.displayName);
+
+        CsTemplateHelper.renderTypeParameters(result, _class);
+
         result.append(" : ");
         result.append(_superclassCsType.displayName);
 
-        for (CsType implementedInterface : _implementedInterfacesCsTypes) {
-            result.append(", ");
-            result.append(implementedInterface.displayName);
-        }
+        CsTemplateHelper.renderImplementedInterfaces(result, _class, _implementedInterfacesCsTypes);
+
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
@@ -89,7 +86,7 @@ public class CsClassTemplate implements ICsTemplate {
             result.append(TemplateHelper.TAB);
             result.append("protected ");
             result.append(_class.getSimpleName());
-            result.appendNewLine("(JavaVoid jv) { }");
+            result.appendNewLine("(JavaVoid jv) : base(JavaVoid.Void) { }");
             result.newLine();
         }
 
@@ -97,16 +94,16 @@ public class CsClassTemplate implements ICsTemplate {
 
         if (!isAbstract)
             for (ICsTemplate template : _constructors)
-                generateResults.addAll(Arrays.asList(template.generate()));
+                generateResults.add(template.generate());
 
         for (ICsTemplate template : _fields)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generateResults.add(template.generate());
 
         for (ICsTemplate template : _methods)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generateResults.add(template.generate());
 
         for (ICsTemplate template : _nestedTypes)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generateResults.add(template.generate());
 
         for (int i = 0; i < generateResults.size(); i++) {
             generateResults.get(i).renderTo(result, 1);

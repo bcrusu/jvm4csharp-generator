@@ -22,29 +22,26 @@ public class CsEnumTemplate implements ICsTemplate {
 
     public CsEnumTemplate(Class clazz) {
         _class = clazz;
-        _classCsType = CsConverter.GetCsType(_class);
-        _superclassCsType = CsConverter.GetCsType(_class.getSuperclass());
+        _classCsType = CsConverter.getCsType(_class);
+        _superclassCsType = CsConverter.getCsType(_class.getGenericSuperclass());
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
                 .stream()
-                .map(CsConverter::GetCsType)
+                .map(CsConverter::getCsType)
                 .collect(Collectors.toList());
 
         _fields = ReflectionHelper.getPublicDeclaredFields(_class)
                 .stream()
-                .filter(x -> !x.isSynthetic())
                 .map(x -> new CsPropertyTemplate(x, _class))
                 .collect(Collectors.toList());
 
         _methods = ReflectionHelper.getPublicDeclaredMethods(_class)
                 .stream()
-                .filter(x -> !x.isSynthetic())
                 .map(x -> new CsMethodTemplate(x, _class))
                 .collect(Collectors.toList());
 
         _constructors = ReflectionHelper.getPublicDeclaredConstructors(_class)
                 .stream()
-                .filter(x -> !x.isSynthetic())
                 .map(x -> new CsConstructorTemplate(x, _class))
                 .collect(Collectors.toList());
 
@@ -76,10 +73,8 @@ public class CsEnumTemplate implements ICsTemplate {
         result.append(" : ");
         result.append(_superclassCsType.displayName);
 
-        for (CsType implementedInterface : _implementedInterfacesCsTypes) {
-            result.append(", ");
-            result.append(implementedInterface.displayName);
-        }
+        CsTemplateHelper.renderImplementedInterfaces(result, _class, _implementedInterfacesCsTypes);
+
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 

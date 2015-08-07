@@ -12,9 +12,8 @@ public class CsPropertyTemplate implements ICsTemplate {
     private Class _declaringClass;
 
     public CsPropertyTemplate(Field field, Class declaringClass) {
-
         _field = field;
-        _fieldCsType = CsConverter.GetCsType(_field.getType());
+        _fieldCsType = CsConverter.getCsType(_field.getGenericType());
         _declaringClass = declaringClass;
     }
 
@@ -25,7 +24,7 @@ public class CsPropertyTemplate implements ICsTemplate {
 
         String name = _field.getName();
         String internalTypeName = ReflectionHelper.GetInternalTypeName(_field.getType());
-        CsType declaringClassCsType = CsConverter.GetCsType(_declaringClass);
+        CsType declaringClassCsType = CsConverter.getCsType(_declaringClass);
 
         GenerateResult result = new GenerateResult();
 

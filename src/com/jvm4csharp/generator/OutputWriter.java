@@ -9,10 +9,12 @@ import java.util.Set;
 public class OutputWriter {
     private final String _outputPath;
     private final Set<String> _created;
+    private final String _fileHeader;
 
     public OutputWriter(String outputPath) {
         _outputPath = outputPath;
         _created = new HashSet<>();
+        _fileHeader = GetFileHeader();
     }
 
     public boolean isValidOutputDirectory() {
@@ -32,13 +34,19 @@ public class OutputWriter {
         ensurePackagePathExists(generateResult.getPath());
         Path outputFilePath = Paths.get(_outputPath, generateResult.getPath(), generateResult.getName());
 
+        File file = outputFilePath.toFile();
+        if (file.exists()) {
+            System.out.format("File '%1s' already exists.", outputFilePath);
+            System.exit(-1);
+        }
+
         try {
-            File file = outputFilePath.toFile();
             file.createNewFile();
 
             try (FileOutputStream fos = new FileOutputStream(file);
                  OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF8");
                  BufferedWriter bw = new BufferedWriter(osw)) {
+                bw.write(_fileHeader);
                 bw.write(generateResult.toString());
             }
         } catch (UnsupportedEncodingException e) {
@@ -69,5 +77,29 @@ public class OutputWriter {
             file.mkdir();
             _created.add(currentPath);
         }
+    }
+
+    private String GetFileHeader() {
+        String java_version = System.getProperty("java.version");
+        String java_vm_specification_version = System.getProperty("java.vm.specification.version");
+        String java_vm_version = System.getProperty("java.vm.version");
+        String java_vm_name = System.getProperty("java.vm.name");
+
+        String template = "//------------------------------------------------------------------------" + TemplateHelper.NEWLINE +
+                "//\tThis code was generated using jvm4csharp-generator:" + TemplateHelper.NEWLINE +
+                "//\thttps://github.com/bcrusu/jvm4csharp-generator" + TemplateHelper.NEWLINE +
+                "//" + TemplateHelper.NEWLINE +
+                "//\tjava_version\t\t\t\t\t: %1s" + TemplateHelper.NEWLINE +
+                "//\tjava_vm_specification_version\t: %2s" + TemplateHelper.NEWLINE +
+                "//\tjava_vm_version\t\t\t\t\t: %3s" + TemplateHelper.NEWLINE +
+                "//\tjava_vm_name\t\t\t\t\t: %4s" + TemplateHelper.NEWLINE +
+                "//------------------------------------------------------------------------" + TemplateHelper.NEWLINE +
+                "" + TemplateHelper.NEWLINE;
+
+        return String.format(template,
+                java_version,
+                java_vm_specification_version,
+                java_vm_version,
+                java_vm_name);
     }
 }

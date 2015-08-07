@@ -6,6 +6,7 @@ import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 
 public class CsConstructorTemplate implements ICsTemplate {
     private final Constructor _constructor;
@@ -16,10 +17,10 @@ public class CsConstructorTemplate implements ICsTemplate {
         _constructor = constructor;
         _declaringClass = declaringClass;
 
-        Class[] parameterTypes = constructor.getParameterTypes();
+        Type[] parameterTypes = constructor.getGenericParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsConverter.GetCsType(parameterTypes[i]);
+            _parametersCsTypes[i] = CsConverter.getCsType(parameterTypes[i]);
         }
     }
 
@@ -42,7 +43,7 @@ public class CsConstructorTemplate implements ICsTemplate {
             result.append(parameters[i].getName());
 
             if (i < parameters.length - 1)
-                result.append(',');
+                result.append(", ");
         }
         result.appendNewLine(") : base(JavaVoid.Void)");
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

@@ -6,8 +6,9 @@ import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 
-//TODO: generics, var args
+//TODO: var args
 public class CsMethodTemplate implements ICsTemplate {
     private final Method _method;
     private final Class _declaringClass;
@@ -17,12 +18,12 @@ public class CsMethodTemplate implements ICsTemplate {
     public CsMethodTemplate(Method method, Class declaringClass) {
         _method = method;
         _declaringClass = declaringClass;
-        _returnCsType = CsConverter.GetCsType(method.getReturnType());
+        _returnCsType = CsConverter.getCsType(method.getGenericReturnType());
 
-        Class[] parameterTypes = method.getParameterTypes();
+        Type[] parameterTypes = method.getGenericParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsConverter.GetCsType(parameterTypes[i]);
+            _parametersCsTypes[i] = CsConverter.getCsType(parameterTypes[i]);
         }
     }
 
@@ -32,7 +33,7 @@ public class CsMethodTemplate implements ICsTemplate {
 
         String name = _method.getName();
         String internalSignature = ReflectionHelper.GetInternalSignature(_method);
-        CsType declaringClassCsType = CsConverter.GetCsType(_declaringClass);
+        CsType declaringClassCsType = CsConverter.getCsType(_declaringClass);
         Parameter[] parameters = _method.getParameters();
         Class returnType = _method.getReturnType();
 
@@ -51,6 +52,8 @@ public class CsMethodTemplate implements ICsTemplate {
         result.append(_returnCsType.displayName);
         result.append(TemplateHelper.SPACE);
         result.append(name);
+
+        CsTemplateHelper.renderTypeParameters(result, _method);
 
         result.append('(');
         for (int i = 0; i < parameters.length; i++) {

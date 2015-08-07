@@ -66,7 +66,7 @@ public class CsProxyGenerator implements IProxyGenerator {
 
         for (CsType csType : referencedCsTypes) {
             for (String namespaceUsed : csType.namespacesUsed) {
-                if (_namespacePrefix != null)
+                if (_namespacePrefix != null && !namespaceUsed.startsWith(_namespacePrefix))
                     namespaceUsed = _namespacePrefix + "." + namespaceUsed;
 
                 set.add(namespaceUsed);

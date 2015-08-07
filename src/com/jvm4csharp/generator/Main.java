@@ -46,11 +46,9 @@ public class Main {
 
     //TODO: proper command line arguments parser
     private static boolean ParseArgs(String[] args) {
-        _outputDirectory = "C:\\work\\gen_out";
+        _outputDirectory = "E:\\work\\github\\jvm4csharp\\jvm4csharp\\generated";
         _namespacePrefix = "jvm4csharp";
-
-        String[] includePatterns = {"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
-        _includePatterns = includePatterns;
+        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
         return true;
     }
 

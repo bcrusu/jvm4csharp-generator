@@ -24,9 +24,8 @@ public class CsConstructorTemplate implements ICsTemplate {
     }
 
     @Override
-    public GenerateResult[] generate() {
+    public GenerateResult generate() {
         String internalSignature = ReflectionHelper.GetInternalSignature(_constructor);
-        CsType declaringClassCsType = CsConverter.GetCsType(_declaringClass);
         Parameter[] parameters = _constructor.getParameters();
 
         GenerateResult result = new GenerateResult();
@@ -42,7 +41,7 @@ public class CsConstructorTemplate implements ICsTemplate {
             result.append(TemplateHelper.SPACE);
             result.append(parameters[i].getName());
 
-            if (i < parameters.length - 2)
+            if (i < parameters.length - 1)
                 result.append(',');
         }
         result.appendNewLine(") : base(JavaVoid.Void)");
@@ -62,9 +61,7 @@ public class CsConstructorTemplate implements ICsTemplate {
         result.appendNewLine(");");
         result.append(TemplateHelper.BLOCK_CLOSE);
 
-        GenerateResult[] results = new GenerateResult[1];
-        results[0] = result;
-        return results;
+        return result;
     }
 
     @Override

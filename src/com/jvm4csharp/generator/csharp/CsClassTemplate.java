@@ -59,10 +59,18 @@ public class CsClassTemplate implements ICsTemplate {
     @Override
     public GenerateResult generate() {
         boolean isFinal = ReflectionHelper.isFinal(_class);
+        boolean isAbstract = ReflectionHelper.isAbstract(_class);
+        String internalTypeName = ReflectionHelper.GetInternalTypeName(_class);
 
         GenerateResult result = new GenerateResult();
 
-        result.append("public");
+        result.append("[JavaProxy(\"");
+        result.append(internalTypeName);
+        result.appendNewLine("\")]");
+
+        result.append("public partial");
+        if (isAbstract)
+            result.append(" abstract");
         if (isFinal)
             result.append(" sealed");
         result.append(" class ");
@@ -77,16 +85,19 @@ public class CsClassTemplate implements ICsTemplate {
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        result.append(TemplateHelper.TAB);
-        result.append("protected ");
-        result.append(_class.getSimpleName());
-        result.appendNewLine("(JavaVoid jv) { }");
-        result.newLine();
+        if (!isFinal) {
+            result.append(TemplateHelper.TAB);
+            result.append("protected ");
+            result.append(_class.getSimpleName());
+            result.appendNewLine("(JavaVoid jv) { }");
+            result.newLine();
+        }
 
         LinkedList<GenerateResult> generateResults = new LinkedList<>();
 
-        for (ICsTemplate template : _constructors)
-            generateResults.addAll(Arrays.asList(template.generate()));
+        if (!isAbstract)
+            for (ICsTemplate template : _constructors)
+                generateResults.addAll(Arrays.asList(template.generate()));
 
         for (ICsTemplate template : _fields)
             generateResults.addAll(Arrays.asList(template.generate()));
@@ -111,14 +122,16 @@ public class CsClassTemplate implements ICsTemplate {
 
     @Override
     public CsType[] getReferencedCsTypes() {
+        boolean isAbstract = ReflectionHelper.isAbstract(_class);
         LinkedList<CsType> result = new LinkedList<>();
 
         result.add(_classCsType);
         result.add(_superclassCsType);
         result.addAll(_implementedInterfacesCsTypes);
 
-        for (ICsTemplate template : _constructors)
-            result.addAll(Arrays.asList(template.getReferencedCsTypes()));
+        if (!isAbstract)
+            for (ICsTemplate template : _constructors)
+                result.addAll(Arrays.asList(template.getReferencedCsTypes()));
 
         for (ICsTemplate template : _fields)
             result.addAll(Arrays.asList(template.getReferencedCsTypes()));

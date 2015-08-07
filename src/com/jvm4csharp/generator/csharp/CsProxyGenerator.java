@@ -2,38 +2,57 @@ package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.GenerateResult;
 import com.jvm4csharp.generator.IProxyGenerator;
+import com.jvm4csharp.generator.TemplateHelper;
 
+import java.io.File;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
+import java.util.stream.Stream;
 
 public class CsProxyGenerator implements IProxyGenerator {
+    private final String _namespacePrefix;
+
+    public CsProxyGenerator(String namespacePrefix) {
+        _namespacePrefix = namespacePrefix;
+    }
+
     @Override
-    public GenerateResult[] generate(Class clazz) {
-        ICsTemplate[] templates = CsTemplateFactory.createTemplates(clazz);
-        LinkedList<GenerateResult> results = new LinkedList<>();
+    public GenerateResult generate(Class clazz) {
+        ICsTemplate template = CsTemplateFactory.createTemplate(clazz);
+        String packageName = clazz.getPackage().getName();
+        String currentNamespace = packageName;
+        if (_namespacePrefix != null)
+            currentNamespace = _namespacePrefix + "." + currentNamespace;
 
-        for (ICsTemplate template : templates) {
-            GenerateResult generateResult = template.generate();
-            CsType[] csTypes = template.getReferencedCsTypes();
-            String[] namespacesUsed = getNamespacesUsed(csTypes);
+        CsType[] csTypes = template.getReferencedCsTypes();
+        String[] namespacesUsed = getNamespacesUsed(csTypes, currentNamespace);
 
-            GenerateResult result = new GenerateResult();
-            result.setName();
-            result.setPath();
+        GenerateResult result = new GenerateResult();
+        result.setName(clazz.getSimpleName() + ".generated.cs");
+        result.setPath(packageName.replace(".", File.separator));
 
-            // render
-            for (String namespace : namespacesUsed) {
+        // using statements
+        if (namespacesUsed.length > 0) {
+            for (String namespaceUsed : namespacesUsed) {
                 result.append("using ");
-                result.append(namespace);
+                result.append(namespaceUsed);
                 result.appendNewLine(";");
             }
 
             result.newLine();
-            generateResult.renderTo(result, 0);
         }
 
-        return results.toArray(new GenerateResult[results.size()]);
+        // namespace block
+        result.append("namespace ");
+        result.appendNewLine(currentNamespace);
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        // render C# type
+        template.generate().renderTo(result, 1);
+
+        result.appendNewLine(TemplateHelper.BLOCK_CLOSE);
+
+        return result;
     }
 
     @Override
@@ -41,12 +60,23 @@ public class CsProxyGenerator implements IProxyGenerator {
         return CsTemplateFactory.canCreateTemplate(clazz);
     }
 
-    private String[] getNamespacesUsed(CsType[] referencedCsTypes) {
+    private String[] getNamespacesUsed(CsType[] referencedCsTypes, String currentNamespace) {
         Set<String> set = new HashSet<>();
-        for (CsType csType : referencedCsTypes)
-            set.addAll(csType.namespacesUsed);
+        set.add("jvm4csharp");
 
-        return set.stream().sorted()
+        for (CsType csType : referencedCsTypes) {
+            for (String namespaceUsed : csType.namespacesUsed) {
+                if (_namespacePrefix != null)
+                    namespaceUsed = _namespacePrefix + "." + namespaceUsed;
+
+                set.add(namespaceUsed);
+            }
+        }
+
+        return set.stream()
+                .filter(x -> x.compareTo(currentNamespace) != 0)
+                .filter(x -> !currentNamespace.startsWith(x))
+                .sorted()
                 .toArray(x -> new String[x]);
     }
 }

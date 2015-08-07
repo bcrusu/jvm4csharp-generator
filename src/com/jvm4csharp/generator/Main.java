@@ -4,18 +4,27 @@ import com.jvm4csharp.generator.csharp.CsProxyGenerator;
 
 import java.util.LinkedList;
 
+//TODO: get parameter names from javadoc
 public class Main {
-    public static void main(String[] args) {
-        String outputDirectory = "C:\\work\\gen_out";
+    private static String _outputDirectory;
+    private static String _namespacePrefix;
+    private static String[] _includePatterns;
 
-        OutputWriter outputWriter = new OutputWriter(outputDirectory);
+    public static void main(String[] args) {
+        if (!ParseArgs(args)) {
+            System.out.println("Invalid command line arguments.");
+            System.exit(-1);
+        }
+
+        OutputWriter outputWriter = new OutputWriter(_outputDirectory);
         if (!outputWriter.isValidOutputDirectory()) {
             System.out.format("Invalid output path.");
             System.exit(-1);
         }
 
-        ClassSelector classSelector = new ClassSelector();
-        LinkedList<Class> classesToGenerate = classSelector.getClasses("java.lang");
+        ClassSelector classSelector = new ClassSelector(_includePatterns);
+
+        LinkedList<Class> classesToGenerate = classSelector.getClasses();
 
         IProxyGenerator generator = getProxyGenerator();
 
@@ -25,15 +34,27 @@ public class Main {
 
             System.out.format("Generating class: %1s", clazz.getName());
 
-            GenerateResult[] generateResults = generator.generate(clazz);
+            GenerateResult generateResult = generator.generate(clazz);
 
-            outputWriter.write(generateResults);
+            outputWriter.write(generateResult);
+
+            System.out.println();
         }
 
-        System.out.format("Done.");
+        System.out.println("Done.");
+    }
+
+    //TODO: proper command line arguments parser
+    private static boolean ParseArgs(String[] args) {
+        _outputDirectory = "C:\\work\\gen_out";
+        _namespacePrefix = "jvm4csharp";
+
+        String[] includePatterns = {"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
+        _includePatterns = includePatterns;
+        return true;
     }
 
     private static IProxyGenerator getProxyGenerator() {
-        return new CsProxyGenerator();
+        return new CsProxyGenerator(_namespacePrefix);
     }
 }

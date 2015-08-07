@@ -12,15 +12,20 @@ import java.util.List;
 import java.util.Set;
 
 public class ClassSelector {
-    public LinkedList<Class> getClasses(String pattern) {
+    private final String[] _includePatterns;
+
+    public ClassSelector(String[] includePatterns) {
+        _includePatterns = includePatterns;
+    }
+
+    public LinkedList<Class> getClasses() {
         Reflections reflections = GetReflections();
         Set<String> allTypes = reflections.getAllTypes();
 
         LinkedList<Class> result = new LinkedList<>();
 
         for (String typeName : allTypes) {
-            //TODO: use regex
-            if (!typeName.startsWith(pattern))
+            if (!isTypeIncluded(typeName))
                 continue;
 
             try {
@@ -34,7 +39,7 @@ public class ClassSelector {
         return result;
     }
 
-    //TODO: better class scanner - ignore non-public
+    //TODO: better class scanner - ignore non-public classes
     private static Reflections GetReflections() {
         List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
         classLoadersList.add(ClasspathHelper.contextClassLoader());
@@ -45,5 +50,13 @@ public class ClassSelector {
                 .setUrls(ClasspathHelper.forJavaClassPath()));
 
         return reflections;
+    }
+
+    private boolean isTypeIncluded(String typeName) {
+        for (String pattern : _includePatterns)
+            if (typeName.startsWith(pattern))   //TODO: use regex
+                return true;
+
+        return false;
     }
 }

@@ -1,8 +1,7 @@
 package com.jvm4csharp.generator;
 
 import java.lang.reflect.*;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class ReflectionHelper {
@@ -16,6 +15,10 @@ public final class ReflectionHelper {
 
     public static boolean isStatic(int modifier) {
         return Modifier.isStatic(modifier);
+    }
+
+    public static boolean isAbstract(int modifier) {
+        return Modifier.isAbstract(modifier);
     }
 
     public static boolean isPublic(Member member) {
@@ -42,6 +45,14 @@ public final class ReflectionHelper {
         return isStatic(clazz.getModifiers());
     }
 
+    public static boolean isAbstract(Member member) {
+        return isAbstract(member.getModifiers());
+    }
+
+    public static boolean isAbstract(Class clazz) {
+        return Modifier.isAbstract(clazz.getModifiers());
+    }
+
     public static List<Field> getPublicDeclaredFields(Class clazz) {
         return Arrays.asList(clazz.getDeclaredFields())
                 .stream()
@@ -50,7 +61,29 @@ public final class ReflectionHelper {
     }
 
     public static List<Method> getPublicDeclaredMethods(Class clazz) {
-        return Arrays.asList(clazz.getDeclaredMethods())
+        Method[] methods = clazz.getDeclaredMethods();
+
+        if (!clazz.isInterface() && clazz != Object.class) {
+            Class superclass = clazz.getSuperclass();
+            List<Method> superclassMethods = Arrays.asList(superclass.getMethods());
+
+            List<Method> filteredMethods = new LinkedList<>();
+            for (Method method : methods) {
+                boolean ok = true;
+                for (Method superclassMethod : superclassMethods)
+                    if (getMethodsAreEquivalent(method, superclassMethod)) {
+                        ok = false;
+                        break;
+                    }
+
+                if (ok)
+                    filteredMethods.add(method);
+            }
+
+            methods = filteredMethods.toArray(new Method[filteredMethods.size()]);
+        }
+
+        return Arrays.asList(methods)
                 .stream()
                 .filter(x -> isPublic(x))
                 .collect(Collectors.toList());
@@ -78,38 +111,40 @@ public final class ReflectionHelper {
     }
 
     public static String GetInternalTypeName(Class clazz) {
-        String result;
         if (clazz == Void.TYPE) {
             return "V";
         }
 
+        String result = "";
+        if (clazz.isArray()) {
+            result = "[";
+            clazz = clazz.getComponentType();
+        }
+
         if (clazz.isPrimitive()) {
             if (clazz == Boolean.TYPE)
-                result = "Z";
+                result += "Z";
             else if (clazz == Byte.TYPE)
-                result = "B";
+                result += "B";
             else if (clazz == Character.TYPE)
-                result = "C";
+                result += "C";
             else if (clazz == Short.TYPE)
-                result = "S";
+                result += "S";
             else if (clazz == Integer.TYPE)
-                result = "I";
+                result += "I";
             else if (clazz == Long.TYPE)
-                result = "J";
+                result += "J";
             else if (clazz == Float.TYPE)
-                result = "F";
-            else if (clazz == Float.TYPE)
-                result = "D";
+                result += "F";
+            else if (clazz == Double.TYPE)
+                result += "D";
             else
                 throw new Error("Unrecognized primitive type.");
         } else {
-            result = clazz.getCanonicalName();
-            result = result.replace('.', '/');
-            result = 'L' + result + ';';
+            String className = clazz.getCanonicalName();
+            className = className.replace('.', '/');
+            result += 'L' + className + ';';
         }
-
-        if (clazz.isArray())
-            result = '[' + result;
 
         return result;
     }
@@ -139,5 +174,26 @@ public final class ReflectionHelper {
         result.append(")V");
 
         return result.toString();
+    }
+
+    public static boolean getMethodsAreEquivalent(Method method1, Method method2) {
+        if ((method1.getName() != method2.getName()))
+            return false;
+
+        if (!method1.getReturnType().equals(method2.getReturnType()))
+            return false;
+
+        return equalParamTypes(method1.getParameterTypes(), method2.getParameterTypes());
+    }
+
+    private static boolean equalParamTypes(Class[] params1, Class[] params2) {
+        if (params1.length == params2.length) {
+            for (int i = 0; i < params1.length; i++) {
+                if (params1[i] != params2[i])
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 }

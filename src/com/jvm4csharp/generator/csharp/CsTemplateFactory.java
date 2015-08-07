@@ -2,8 +2,6 @@ package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.ReflectionHelper;
 
-import java.util.LinkedList;
-
 public class CsTemplateFactory {
     public static boolean canCreateTemplate(Class clazz) {
         if (!ReflectionHelper.isPublic(clazz))
@@ -24,17 +22,12 @@ public class CsTemplateFactory {
         return true;
     }
 
-    public static ICsTemplate[] createTemplates(Class clazz) {
-        LinkedList<ICsTemplate> result = new LinkedList<>();
-
+    public static ICsTemplate createTemplate(Class clazz) {
         if (clazz.isEnum())
-            result.add(new CsEnumTemplate());
-        else if (clazz.isInterface()) {
-            result.add(new CsInterfaceTemplate());
-            //TODO: add ConcreteProxyType template
-        } else
-            result.add(new CsClassTemplate(clazz));
+            return new CsEnumTemplate(clazz);
+        else if (clazz.isInterface())
+            return new CsInterfaceTemplate(clazz);
 
-        return result.toArray(new ICsTemplate[result.size()]);
+        return new CsClassTemplate(clazz);
     }
 }

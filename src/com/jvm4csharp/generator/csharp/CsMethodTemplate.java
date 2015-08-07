@@ -27,8 +27,7 @@ public class CsMethodTemplate implements ICsTemplate {
     }
 
     @Override
-    public GenerateResult[] generate() {
-        //TODO: boolean isFinal = ReflectionHelper.isFinal(_method);
+    public GenerateResult generate() {
         boolean isStatic = ReflectionHelper.isStatic(_method);
 
         String name = _method.getName();
@@ -40,14 +39,16 @@ public class CsMethodTemplate implements ICsTemplate {
         GenerateResult result = new GenerateResult();
 
         // signature
-        result.append("public");
+        result.append("[JavaSignature(\"");
+        result.append(internalSignature);
+        result.appendNewLine("\")]");
 
+        if (!_declaringClass.isInterface())
+            result.append("public ");
         if (isStatic)
-            result.append(" static");
+            result.append("static ");
 
-        result.append(TemplateHelper.SPACE);
         result.append(_returnCsType.displayName);
-
         result.append(TemplateHelper.SPACE);
         result.append(name);
 
@@ -57,51 +58,55 @@ public class CsMethodTemplate implements ICsTemplate {
             result.append(TemplateHelper.SPACE);
             result.append(parameters[i].getName());
 
-            if (i < parameters.length - 2)
-                result.append(',');
+            if (i < parameters.length - 1)
+                result.append(", ");
         }
-        result.appendNewLine(')');
-        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+        result.append(')');
 
         // body
-        result.append(TemplateHelper.TAB);
-        if (returnType != Void.TYPE)
-            result.append("return ");
+        if (_declaringClass.isInterface()) {
+            result.append(";");
+        } else {
+            result.newLine();
+            result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        result.append("Call");
-        if (isStatic)
-            result.append("Static");
-        result.append("Method");
+            result.append(TemplateHelper.TAB);
+            if (returnType != Void.TYPE)
+                result.append("return ");
 
-        if (returnType != Void.TYPE) {
-            result.append("<");
-            result.append(_returnCsType.displayName);
-            result.append(">");
+            result.append("Call");
+            if (isStatic)
+                result.append("Static");
+            result.append("Method");
+
+            if (returnType != Void.TYPE) {
+                result.append("<");
+                result.append(_returnCsType.displayName);
+                result.append(">");
+            }
+
+            result.append('(');
+            if (isStatic) {
+                result.append("typeof(");
+                result.append(declaringClassCsType.displayName);
+                result.append("), ");
+            }
+            result.append("\"");
+            result.append(name);
+            result.append("\", \"");
+            result.append(internalSignature);
+            result.append("\"");
+
+            for (int i = 0; i < parameters.length; i++) {
+                result.append(", ");
+                result.append(parameters[i].getName());
+            }
+
+            result.appendNewLine(");");
+            result.append(TemplateHelper.BLOCK_CLOSE);
         }
 
-        result.append('(');
-        if (isStatic) {
-            result.append("typeof(");
-            result.append(declaringClassCsType.displayName);
-            result.append("), ");
-        }
-        result.append("\"");
-        result.append(name);
-        result.append("\", \"");
-        result.append(internalSignature);
-        result.append("\"");
-
-        for (int i = 0; i < parameters.length; i++) {
-            result.append(", ");
-            result.append(parameters[i].getName());
-        }
-
-        result.appendNewLine(");");
-        result.append(TemplateHelper.BLOCK_CLOSE);
-
-        GenerateResult[] results = new GenerateResult[1];
-        results[0] = result;
-        return results;
+        return result;
     }
 
     @Override

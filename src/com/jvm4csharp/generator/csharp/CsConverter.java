@@ -1,8 +1,10 @@
 package com.jvm4csharp.generator.csharp;
 
+import java.util.DoubleSummaryStatistics;
+
 public final class CsConverter {
     public static CsType GetCsType(Class clazz) {
-        if (clazz == Void.TYPE){
+        if (clazz == Void.TYPE) {
             CsType result = new CsType();
             result.displayName = "void";
             return result;
@@ -25,7 +27,7 @@ public final class CsConverter {
                 result.displayName = "long";
             else if (clazz == Float.TYPE)
                 result.displayName = "float";
-            else if (clazz == Float.TYPE)
+            else if (clazz == Double.TYPE)
                 result.displayName = "double";
             else
                 throw new IllegalArgumentException("Unrecognized primitive type");
@@ -39,19 +41,19 @@ public final class CsConverter {
 
             if (elementType == Boolean.TYPE)
                 result.displayName = "BooleanArray";
-            if (elementType == Byte.TYPE)
+            else if (elementType == Byte.TYPE)
                 result.displayName = "ByteArray";
-            if (elementType == Character.TYPE)
+            else if (elementType == Character.TYPE)
                 result.displayName = "CharArray";
-            if (elementType == Short.TYPE)
+            else if (elementType == Short.TYPE)
                 result.displayName = "ShortArray";
-            if (elementType == Integer.TYPE)
+            else if (elementType == Integer.TYPE)
                 result.displayName = "IntArray";
-            if (elementType == Long.TYPE)
+            else if (elementType == Long.TYPE)
                 result.displayName = "LongArray";
-            if (elementType == Float.TYPE)
+            else if (elementType == Float.TYPE)
                 result.displayName = "FloatArray";
-            if (elementType == Float.TYPE)
+            else if (elementType == Float.TYPE)
                 result.displayName = "DoubleArray";
             else {
                 CsType elementCsType = GetCsType(elementType);
@@ -62,8 +64,13 @@ public final class CsConverter {
             return result;
         }
 
+        String packageName = clazz.getPackage().getName();
+
         if (clazz.isEnum()) {
-            throw new Error(); //TODO
+            CsType result = new CsType();
+            result.displayName = clazz.getCanonicalName().substring(packageName.length() + 1);
+            result.namespacesUsed.add(packageName);
+            return result;
         }
 
         if (clazz.isSynthetic() || clazz.isLocalClass() || clazz.isAnonymousClass()) {
@@ -74,11 +81,10 @@ public final class CsConverter {
         //ParameterizedType parameterizedType = (ParameterizedType)getClass()                .getGenericSuperclass();
         //return (Class) parameterizedType.getActualTypeArguments()[0];
 
-        String packageName = clazz.getPackage().getName();
 
         CsType result = new CsType();
-        result.displayName = clazz.getCanonicalName().substring(packageName.length()+ 1);
-        result.namespacesUsed.add("jvm4csharp." + packageName);
+        result.displayName = clazz.getCanonicalName().substring(packageName.length() + 1);
+        result.namespacesUsed.add(packageName);
         return result;
     }
 }

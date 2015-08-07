@@ -28,36 +28,31 @@ public class OutputWriter {
         return true;
     }
 
-    public void write(GenerateResult[] generateResults) {
-        for (GenerateResult generateResult : generateResults) {
-            String name = generateResult.getName();
-            String path = generateResult.getPath();
+    public void write(GenerateResult generateResult) {
+        ensurePackagePathExists(generateResult.getPath());
+        Path outputFilePath = Paths.get(_outputPath, generateResult.getPath(), generateResult.getName());
 
-            ensurePackagePathExists(path);
-            Path fullOutputPath = Paths.get(_outputPath, path, name);
+        try {
+            File file = outputFilePath.toFile();
+            file.createNewFile();
 
-            try {
-                File file = fullOutputPath.toFile();
-                file.createNewFile();
-
-                try (FileOutputStream fos = new FileOutputStream(file);
-                     OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF8");
-                     BufferedWriter bw = new BufferedWriter(osw)) {
-                    bw.write(generateResult.toString());
-                }
-            } catch (UnsupportedEncodingException e) {
-                System.out.println("Could not find the UTF8 encoding. ");
-                System.out.println(e);
-                System.exit(-1);
-            } catch (FileNotFoundException e) {
-                System.out.print("BOOM! where is my file? ");
-                System.out.println(e);
-                System.exit(-1);
-            } catch (IOException e) {
-                System.out.print("Could not create output file: ");
-                System.out.println(e);
-                System.exit(-1);
+            try (FileOutputStream fos = new FileOutputStream(file);
+                 OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF8");
+                 BufferedWriter bw = new BufferedWriter(osw)) {
+                bw.write(generateResult.toString());
             }
+        } catch (UnsupportedEncodingException e) {
+            System.out.println("Could not find the UTF8 encoding. ");
+            System.out.println(e);
+            System.exit(-1);
+        } catch (FileNotFoundException e) {
+            System.out.print("BOOM! where is my file? ");
+            System.out.println(e);
+            System.exit(-1);
+        } catch (IOException e) {
+            System.out.print("Could not create output file: ");
+            System.out.println(e);
+            System.exit(-1);
         }
     }
 

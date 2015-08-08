@@ -61,14 +61,23 @@ public final class ReflectionHelper {
     }
 
     public static List<Method> getPublicDeclaredMethods(Class clazz) {
-        Method[] methods = clazz.getDeclaredMethods();
+        List<Method> declaredMethods = Arrays.asList(clazz.getDeclaredMethods())
+                .stream()
+                .filter(x -> isPublic(x))
+                .collect(Collectors.toList());
 
-        if (!clazz.isInterface() && clazz != Object.class) {
+        if (clazz.isInterface()) {
+            return declaredMethods;
+        }
+
+        List<Method> result = new ArrayList<>();
+
+        // filter superclass methods with the same signature and return type
+        if (clazz != Object.class) {
             Class superclass = clazz.getSuperclass();
             List<Method> superclassMethods = Arrays.asList(superclass.getMethods());
 
-            List<Method> filteredMethods = new LinkedList<>();
-            for (Method method : methods) {
+            for (Method method : declaredMethods) {
                 boolean ok = true;
                 for (Method superclassMethod : superclassMethods)
                     if (getMethodsAreEquivalent(method, superclassMethod)) {
@@ -77,27 +86,42 @@ public final class ReflectionHelper {
                     }
 
                 if (ok)
-                    filteredMethods.add(method);
+                    result.add(method);
             }
-
-            methods = filteredMethods.toArray(new Method[filteredMethods.size()]);
+        } else {
+            result.addAll(declaredMethods);
         }
 
-        return Arrays.asList(methods)
-                .stream()
-                .filter(x -> isPublic(x))
-                .collect(Collectors.toList());
+        // include missing methods from implemented interfaces
+        if (isAbstract(clazz)) {
+            if (clazz.getName().contains("Writer"))
+            {
+                Class[] interface22s = clazz.getInterfaces();
+            }
+
+            Class[] interfaces = clazz.getInterfaces();
+            for (Class iface : interfaces) {
+                Method[] interfaceMethods = iface.getMethods();
+                for (Method interfaceMethod : interfaceMethods) {
+                    boolean ok = true;
+                    for (Method method : result) {
+                        if (getMethodsAreEquivalent(method, interfaceMethod)) {
+                            ok = false;
+                            break;
+                        }
+                    }
+
+                    if (ok)
+                        result.add(interfaceMethod);
+                }
+            }
+        }
+
+        return result;
     }
 
     public static List<Constructor> getPublicDeclaredConstructors(Class clazz) {
         return Arrays.asList(clazz.getDeclaredConstructors())
-                .stream()
-                .filter(x -> isPublic(x))
-                .collect(Collectors.toList());
-    }
-
-    public static List<Class> getPublicDeclaredClasses(Class clazz) {
-        return Arrays.asList(clazz.getDeclaredClasses())
                 .stream()
                 .filter(x -> isPublic(x))
                 .collect(Collectors.toList());
@@ -109,7 +133,7 @@ public final class ReflectionHelper {
                 .collect(Collectors.toList());
     }
 
-    public static String GetInternalTypeName(Class clazz) {
+    public static String getInternalTypeName(Class clazz) {
         if (clazz == Void.TYPE) {
             return "V";
         }
@@ -148,29 +172,29 @@ public final class ReflectionHelper {
         return result;
     }
 
-    public static String GetInternalSignature(Executable executable){
+    public static String getInternalSignature(Executable executable) {
         StringBuilder result = new StringBuilder();
         result.append('(');
 
         Class[] parameterTypes = executable.getParameterTypes();
         for (Class parameterType : parameterTypes)
-            result.append(GetInternalTypeName(parameterType));
+            result.append(getInternalTypeName(parameterType));
 
         result.append(')');
         return result.toString();
     }
 
-    public static String GetInternalSignature(Method method) {
+    public static String getInternalSignature(Method method) {
         StringBuilder result = new StringBuilder();
-        result.append(GetInternalSignature((Executable)method));
-        result.append(GetInternalTypeName(method.getReturnType()));
+        result.append(getInternalSignature((Executable) method));
+        result.append(getInternalTypeName(method.getReturnType()));
         return result.toString();
     }
 
-    public static String GetInternalSignature(Constructor constructor) {
+    public static String getInternalSignature(Constructor constructor) {
         StringBuilder result = new StringBuilder();
-        result.append(GetInternalSignature((Executable)constructor));
-        result.append(GetInternalTypeName(Void.TYPE));
+        result.append(getInternalSignature((Executable) constructor));
+        result.append(getInternalTypeName(Void.TYPE));
         return result.toString();
     }
 
@@ -178,6 +202,7 @@ public final class ReflectionHelper {
         if ((method1.getName() != method2.getName()))
             return false;
 
+        //TODO: C# requires 'new' keyword
         if (!method1.getReturnType().equals(method2.getReturnType()))
             return false;
 

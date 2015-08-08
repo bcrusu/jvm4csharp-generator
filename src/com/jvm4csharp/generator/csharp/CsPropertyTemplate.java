@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
@@ -13,20 +13,20 @@ public class CsPropertyTemplate implements ICsTemplate {
 
     public CsPropertyTemplate(Field field, Class declaringClass) {
         _field = field;
-        _fieldCsType = CsConverter.getCsType(_field.getGenericType());
+        _fieldCsType = CsType.getCsType(_field.getGenericType());
         _declaringClass = declaringClass;
     }
 
     @Override
-    public GenerateResult generate() {
+    public GenerationResult generate() {
         boolean isFinal = ReflectionHelper.isFinal(_field);
         boolean isStatic = ReflectionHelper.isStatic(_field);
 
         String name = _field.getName();
-        String internalTypeName = ReflectionHelper.GetInternalTypeName(_field.getType());
-        CsType declaringClassCsType = CsConverter.getCsType(_declaringClass);
+        String internalTypeName = ReflectionHelper.getInternalTypeName(_field.getType());
+        CsType declaringClassCsType = CsType.getCsType(_declaringClass);
 
-        GenerateResult result = new GenerateResult();
+        GenerationResult result = new GenerationResult();
 
         // signature
         result.append("[JavaSignature(\"");
@@ -55,8 +55,7 @@ public class CsPropertyTemplate implements ICsTemplate {
 
             // getter
             result.append(TemplateHelper.TAB);
-            result.append("get { ");
-            result.append("return Get");
+            result.append("get { return Get");
             if (isStatic)
                 result.append("Static");
             result.append("Field<");
@@ -77,9 +76,10 @@ public class CsPropertyTemplate implements ICsTemplate {
 
             // setter
             if (!isFinal) {
+                result.newLine();
                 result.append(TemplateHelper.TAB);
-                result.append("set { ");
-                result.append("return Set");
+
+                result.append("set { Set");
                 if (isStatic)
                     result.append("Static");
                 result.append("Field(");

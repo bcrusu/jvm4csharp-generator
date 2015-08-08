@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
@@ -18,16 +18,15 @@ public class CsEnumTemplate implements ICsTemplate {
     private final List<CsPropertyTemplate> _fields;
     private final List<CsMethodTemplate> _methods;
     private final List<CsConstructorTemplate> _constructors;
-    private final List<ICsTemplate> _nestedTypes;
 
     public CsEnumTemplate(Class clazz) {
         _class = clazz;
-        _classCsType = CsConverter.getCsType(_class);
-        _superclassCsType = CsConverter.getCsType(_class.getGenericSuperclass());
+        _classCsType = CsType.getCsType(_class);
+        _superclassCsType = CsType.getCsType(_class.getGenericSuperclass());
 
         _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
                 .stream()
-                .map(CsConverter::getCsType)
+                .map(CsType::getCsType)
                 .collect(Collectors.toList());
 
         _fields = ReflectionHelper.getPublicDeclaredFields(_class)
@@ -44,20 +43,14 @@ public class CsEnumTemplate implements ICsTemplate {
                 .stream()
                 .map(x -> new CsConstructorTemplate(x, _class))
                 .collect(Collectors.toList());
-
-        _nestedTypes = ReflectionHelper.getPublicDeclaredClasses(_class)
-                .stream()
-                .filter(x -> CsTemplateFactory.canCreateTemplate(x))
-                .map(x -> CsTemplateFactory.createTemplate(x))
-                .collect(Collectors.toList());
     }
 
     @Override
-    public GenerateResult generate() {
-        String internalTypeName = ReflectionHelper.GetInternalTypeName(_class);
+    public GenerationResult generate() {
+        String internalTypeName = ReflectionHelper.getInternalTypeName(_class);
         boolean isAbstract = ReflectionHelper.isAbstract(_class);
 
-        GenerateResult result = new GenerateResult();
+        GenerationResult result = new GenerationResult();
 
         result.append("[JavaProxy(\"");
         result.append(internalTypeName);
@@ -78,34 +71,25 @@ public class CsEnumTemplate implements ICsTemplate {
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        if (isAbstract) {
-            result.append(TemplateHelper.TAB);
-            result.append("protected ");
-            result.append(_class.getSimpleName());
-            result.appendNewLine("(JavaVoid jv) { }");
-            result.newLine();
-        }
+        CsTemplateHelper.renderConstructors(result, _class, _constructors);
 
-        LinkedList<GenerateResult> generateResults = new LinkedList<>();
-
-        if (!isAbstract)
-            for (ICsTemplate template : _constructors)
-                generateResults.addAll(Arrays.asList(template.generate()));
+        LinkedList<GenerationResult> generationResults = new LinkedList<>();
 
         for (ICsTemplate template : _fields)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generationResults.add(template.generate());
 
         for (ICsTemplate template : _methods)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generationResults.add(template.generate());
 
-        for (ICsTemplate template : _nestedTypes)
-            generateResults.addAll(Arrays.asList(template.generate()));
+        if (generationResults.size() > 0) {
+            result.newLine();
 
-        for (int i = 0; i < generateResults.size(); i++) {
-            generateResults.get(i).renderTo(result, 1);
+            for (int i = 0; i < generationResults.size(); i++) {
+                generationResults.get(i).renderTo(result, 1);
 
-            if (i < generateResults.size() - 1)
-                result.newLine();
+                if (i < generationResults.size() - 1)
+                    result.newLine();
+            }
         }
 
         result.append(TemplateHelper.BLOCK_CLOSE);
@@ -130,9 +114,6 @@ public class CsEnumTemplate implements ICsTemplate {
             result.addAll(Arrays.asList(template.getReferencedCsTypes()));
 
         for (ICsTemplate template : _methods)
-            result.addAll(Arrays.asList(template.getReferencedCsTypes()));
-
-        for (ICsTemplate template : _nestedTypes)
             result.addAll(Arrays.asList(template.getReferencedCsTypes()));
 
         return result.toArray(new CsType[result.size()]);

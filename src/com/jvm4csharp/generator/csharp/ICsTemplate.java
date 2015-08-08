@@ -1,9 +1,9 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 
 public interface ICsTemplate {
-    GenerateResult generate();
+    GenerationResult generate();
 
     CsType[] getReferencedCsTypes();
 }

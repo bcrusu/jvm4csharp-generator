@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
@@ -8,6 +8,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 
+//TODO: render outer class "this" parameter for inner classes
 public class CsConstructorTemplate implements ICsTemplate {
     private final Constructor _constructor;
     private final Class _declaringClass;
@@ -20,21 +21,21 @@ public class CsConstructorTemplate implements ICsTemplate {
         Type[] parameterTypes = constructor.getGenericParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsConverter.getCsType(parameterTypes[i]);
+            _parametersCsTypes[i] = CsType.getCsType(parameterTypes[i]);
         }
     }
 
     @Override
-    public GenerateResult generate() {
-        String internalSignature = ReflectionHelper.GetInternalSignature(_constructor);
+    public GenerationResult generate() {
+        String internalSignature = ReflectionHelper.getInternalSignature(_constructor);
         Parameter[] parameters = _constructor.getParameters();
 
-        GenerateResult result = new GenerateResult();
+        GenerationResult result = new GenerationResult();
 
         // signature
         result.append("public");
         result.append(TemplateHelper.SPACE);
-        result.append(_declaringClass.getSimpleName());
+        result.append(CsType.getCsClassName(_declaringClass));
 
         result.append('(');
         for (int i = 0; i < parameters.length; i++) {

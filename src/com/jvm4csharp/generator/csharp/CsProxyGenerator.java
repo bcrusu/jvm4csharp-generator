@@ -1,13 +1,14 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
+import com.jvm4csharp.generator.GenerationResultLocation;
 import com.jvm4csharp.generator.IProxyGenerator;
 import com.jvm4csharp.generator.TemplateHelper;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Stream;
 
 public class CsProxyGenerator implements IProxyGenerator {
     private final String _namespacePrefix;
@@ -17,42 +18,13 @@ public class CsProxyGenerator implements IProxyGenerator {
     }
 
     @Override
-    public GenerateResult generate(Class clazz) {
+    public GenerationResult generate(Class clazz) {
         ICsTemplate template = CsTemplateFactory.createTemplate(clazz);
-        String packageName = clazz.getPackage().getName();
-        String currentNamespace = packageName;
-        if (_namespacePrefix != null)
-            currentNamespace = _namespacePrefix + "." + currentNamespace;
+        GenerationResultLocation location = getLocation(clazz);
 
-        CsType[] csTypes = template.getReferencedCsTypes();
-        String[] namespacesUsed = getNamespacesUsed(csTypes, currentNamespace);
+        //TODO: generate companion templates
 
-        GenerateResult result = new GenerateResult();
-        result.setName(clazz.getSimpleName() + ".generated.cs");
-        result.setPath(packageName.replace(".", File.separator));
-
-        // using statements
-        if (namespacesUsed.length > 0) {
-            for (String namespaceUsed : namespacesUsed) {
-                result.append("using ");
-                result.append(namespaceUsed);
-                result.appendNewLine(";");
-            }
-
-            result.newLine();
-        }
-
-        // namespace block
-        result.append("namespace ");
-        result.appendNewLine(currentNamespace);
-        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
-
-        // render C# type
-        template.generate().renderTo(result, 1);
-
-        result.appendNewLine(TemplateHelper.BLOCK_CLOSE);
-
-        return result;
+        return generateTemplate(clazz, template, location);
     }
 
     @Override
@@ -78,5 +50,52 @@ public class CsProxyGenerator implements IProxyGenerator {
                 .filter(x -> !currentNamespace.startsWith(x))
                 .sorted()
                 .toArray(x -> new String[x]);
+    }
+
+    private static GenerationResultLocation getLocation(Class clazz){
+        String packageName = clazz.getPackage().getName();
+
+        String name = CsType.getCsClassName(clazz) + ".gen.cs";
+        String path = packageName.replace(".", File.separator);
+
+        GenerationResultLocation result = new GenerationResultLocation(path, name);
+        return result;
+    }
+
+    private GenerationResult generateTemplate(Class clazz, ICsTemplate template, GenerationResultLocation location) {
+        String packageName = clazz.getPackage().getName();
+        String currentNamespace = packageName;
+        if (_namespacePrefix != null)
+            currentNamespace = _namespacePrefix + "." + currentNamespace;
+
+        CsType[] csTypes = template.getReferencedCsTypes();
+        String[] namespacesUsed = getNamespacesUsed(csTypes, currentNamespace);
+
+        GenerationResult result = new GenerationResult(location);
+
+        // using statements
+        if (namespacesUsed.length > 0) {
+            for (String namespaceUsed : namespacesUsed) {
+                result.append("using ");
+                result.append(namespaceUsed);
+                result.appendNewLine(";");
+            }
+
+            result.newLine();
+        }
+
+        result.appendNewLine("// ReSharper disable InconsistentNaming");
+
+        // namespace block
+        result.append("namespace ");
+        result.appendNewLine(currentNamespace);
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        // render C# type
+        template.generate().renderTo(result, 1);
+
+        result.appendNewLine(TemplateHelper.BLOCK_CLOSE);
+
+        return result;
     }
 }

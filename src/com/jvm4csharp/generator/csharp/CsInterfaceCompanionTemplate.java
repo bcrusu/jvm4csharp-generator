@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
@@ -9,7 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-//TODO: nested types
 public class CsInterfaceCompanionTemplate implements ICsTemplate {
     private final Class _class;
     private final CsType _classCsType;
@@ -18,7 +17,7 @@ public class CsInterfaceCompanionTemplate implements ICsTemplate {
 
     public CsInterfaceCompanionTemplate(Class clazz) {
         _class = clazz;
-        _classCsType = CsConverter.getCsType(_class);
+        _classCsType = CsType.getCsType(_class);
 
         _fields = ReflectionHelper.getPublicDeclaredFields(_class)
                 .stream()
@@ -34,26 +33,27 @@ public class CsInterfaceCompanionTemplate implements ICsTemplate {
     }
 
     @Override
-    public GenerateResult generate() {
-        GenerateResult result = new GenerateResult();
+    public GenerationResult generate() {
+        GenerationResult result = new GenerationResult();
 
         result.append("public static class ");
-        result.appendNewLine(_classCsType.displayName);
+        result.append(_classCsType.displayName);
+        result.append("_");
 
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        LinkedList<GenerateResult> generateResults = new LinkedList<>();
+        LinkedList<GenerationResult> generationResults = new LinkedList<>();
 
         for (ICsTemplate template : _fields)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generationResults.addAll(Arrays.asList(template.generate()));
 
         for (ICsTemplate template : _methods)
-            generateResults.addAll(Arrays.asList(template.generate()));
+            generationResults.addAll(Arrays.asList(template.generate()));
 
-        for (int i = 0; i < generateResults.size(); i++) {
-            generateResults.get(i).renderTo(result, 1);
+        for (int i = 0; i < generationResults.size(); i++) {
+            generationResults.get(i).renderTo(result, 1);
 
-            if (i < generateResults.size() - 1)
+            if (i < generationResults.size() - 1)
                 result.newLine();
         }
 

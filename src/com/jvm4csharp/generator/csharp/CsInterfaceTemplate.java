@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
@@ -16,11 +16,11 @@ public class CsInterfaceTemplate implements ICsTemplate {
 
     public CsInterfaceTemplate(Class clazz) {
         _class = clazz;
-        _classCsType = CsConverter.getCsType(_class);
+        _classCsType = CsType.getCsType(_class);
 
         _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
                 .stream()
-                .map(CsConverter::getCsType)
+                .map(CsType::getCsType)
                 .collect(Collectors.toList());
 
         _fields = ReflectionHelper.getPublicDeclaredFields(_class)
@@ -38,10 +38,10 @@ public class CsInterfaceTemplate implements ICsTemplate {
     }
 
     @Override
-    public GenerateResult generate() {
-        String internalTypeName = ReflectionHelper.GetInternalTypeName(_class);
+    public GenerationResult generate() {
+        String internalTypeName = ReflectionHelper.getInternalTypeName(_class);
 
-        GenerateResult result = new GenerateResult();
+        GenerationResult result = new GenerationResult();
 
         result.append("[JavaProxy(\"");
         result.append(internalTypeName);
@@ -56,18 +56,18 @@ public class CsInterfaceTemplate implements ICsTemplate {
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        LinkedList<GenerateResult> generateResults = new LinkedList<>();
+        LinkedList<GenerationResult> generationResults = new LinkedList<>();
 
         for (ICsTemplate template : _fields)
-            generateResults.addAll(Collections.singletonList(template.generate()));
+            generationResults.add(template.generate());
 
         for (ICsTemplate template : _methods)
-            generateResults.addAll(Collections.singletonList(template.generate()));
+            generationResults.add(template.generate());
 
-        for (int i = 0; i < generateResults.size(); i++) {
-            generateResults.get(i).renderTo(result, 1);
+        for (int i = 0; i < generationResults.size(); i++) {
+            generationResults.get(i).renderTo(result, 1);
 
-            if (i < generateResults.size() - 1)
+            if (i < generationResults.size() - 1)
                 result.newLine();
         }
 

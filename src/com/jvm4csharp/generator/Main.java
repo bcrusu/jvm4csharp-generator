@@ -34,9 +34,9 @@ public class Main {
 
             System.out.format("Generating class: %1s", clazz.getName());
 
-            GenerateResult generateResult = generator.generate(clazz);
+            GenerationResult generationResult = generator.generate(clazz);
 
-            outputWriter.write(generateResult);
+            outputWriter.write(generationResult);
 
             System.out.println();
         }
@@ -48,7 +48,7 @@ public class Main {
     private static boolean ParseArgs(String[] args) {
         _outputDirectory = "E:\\work\\github\\jvm4csharp\\jvm4csharp\\generated";
         _namespacePrefix = "jvm4csharp";
-        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
+        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text", "java.security"};
         return true;
     }
 

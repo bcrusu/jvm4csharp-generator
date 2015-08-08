@@ -2,23 +2,23 @@ package com.jvm4csharp.generator;
 
 import java.util.LinkedList;
 
-public class GenerateResult {
+public class GenerationResult {
     private final LinkedList<String> _lines;
+    private final GenerationResultLocation _location;
     private StringBuilder _currentLine;
-    private String _name;
-    private String _path;
 
-    public GenerateResult() {
+    public GenerationResult(GenerationResultLocation location) {
         _lines = new LinkedList<>();
         _currentLine = new StringBuilder();
+        _location = location;
+    }
+
+    public GenerationResult() {
+        this(null);
     }
 
     public void newLine() {
         _lines.add(_currentLine.toString());
-        _currentLine = new StringBuilder();
-    }
-
-    public void clearCurrentLine(){
         _currentLine = new StringBuilder();
     }
 
@@ -40,7 +40,11 @@ public class GenerateResult {
         newLine();
     }
 
-    public void renderTo(GenerateResult gr, int indentationLevel) {
+    public GenerationResultLocation getLocation() {
+        return _location;
+    }
+
+    public void renderTo(GenerationResult gr, int indentationLevel) {
         String indentation = TemplateHelper.getIndentation(indentationLevel);
         for (int i = 0; i < _lines.size(); i++) {
             String line = _lines.get(i);
@@ -56,24 +60,8 @@ public class GenerateResult {
         }
     }
 
-    public void setName(String name){
-        _name = name;
-    }
-
-    public String getName(){
-        return _name;
-    }
-
-    public void setPath(String path){
-        _path = path;
-    }
-
-    public String getPath(){
-        return _path;
-    }
-
     @Override
-    public String toString(){
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < _lines.size(); i++) {
             String line = _lines.get(i);

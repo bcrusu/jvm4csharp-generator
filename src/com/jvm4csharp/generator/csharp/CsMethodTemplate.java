@@ -1,6 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerateResult;
+import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
@@ -18,26 +18,26 @@ public class CsMethodTemplate implements ICsTemplate {
     public CsMethodTemplate(Method method, Class declaringClass) {
         _method = method;
         _declaringClass = declaringClass;
-        _returnCsType = CsConverter.getCsType(method.getGenericReturnType());
+        _returnCsType = CsType.getCsType(method.getGenericReturnType());
 
         Type[] parameterTypes = method.getGenericParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsConverter.getCsType(parameterTypes[i]);
+            _parametersCsTypes[i] = CsType.getCsType(parameterTypes[i]);
         }
     }
 
     @Override
-    public GenerateResult generate() {
+    public GenerationResult generate() {
         boolean isStatic = ReflectionHelper.isStatic(_method);
 
         String name = _method.getName();
-        String internalSignature = ReflectionHelper.GetInternalSignature(_method);
-        CsType declaringClassCsType = CsConverter.getCsType(_declaringClass);
+        String internalSignature = ReflectionHelper.getInternalSignature(_method);
+        CsType declaringClassCsType = CsType.getCsType(_declaringClass);
         Parameter[] parameters = _method.getParameters();
         Class returnType = _method.getReturnType();
 
-        GenerateResult result = new GenerateResult();
+        GenerationResult result = new GenerationResult();
 
         // signature
         result.append("[JavaSignature(\"");

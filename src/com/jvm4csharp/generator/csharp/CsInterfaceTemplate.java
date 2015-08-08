@@ -18,7 +18,7 @@ public class CsInterfaceTemplate implements ICsTemplate {
         _class = clazz;
         _classCsType = CsType.getCsType(_class);
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
                 .stream()
                 .map(CsType::getCsType)
                 .collect(Collectors.toList());

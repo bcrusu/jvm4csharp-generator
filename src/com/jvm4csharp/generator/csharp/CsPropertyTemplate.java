@@ -5,6 +5,7 @@ import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Field;
+import java.util.Collections;
 
 public class CsPropertyTemplate implements ICsTemplate {
     private final Field _field;
@@ -22,7 +23,7 @@ public class CsPropertyTemplate implements ICsTemplate {
         boolean isFinal = ReflectionHelper.isFinal(_field);
         boolean isStatic = ReflectionHelper.isStatic(_field);
 
-        String name = _field.getName();
+        String fieldName = _field.getName();
         String internalTypeName = ReflectionHelper.getInternalTypeName(_field.getType());
         CsType declaringClassCsType = CsType.getCsType(_declaringClass);
 
@@ -41,7 +42,7 @@ public class CsPropertyTemplate implements ICsTemplate {
 
         result.append(_fieldCsType.displayName);
         result.append(TemplateHelper.SPACE);
-        result.append(name);
+        result.append(CsTemplateHelper.escapeCsKeyword(fieldName));
 
 
         if (_declaringClass.isInterface()) {
@@ -69,7 +70,7 @@ public class CsPropertyTemplate implements ICsTemplate {
             }
 
             result.append("\"");
-            result.append(name);
+            result.append(fieldName);
             result.append("\", \"");
             result.append(internalTypeName);
             result.append("\"); }");
@@ -89,7 +90,7 @@ public class CsPropertyTemplate implements ICsTemplate {
                     result.append("), ");
                 }
                 result.append("\"");
-                result.append(name);
+                result.append(fieldName);
                 result.append("\", \"");
                 result.append(internalTypeName);
                 result.append("\", value); }");

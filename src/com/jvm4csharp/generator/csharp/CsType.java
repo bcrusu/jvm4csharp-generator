@@ -17,7 +17,7 @@ public final class CsType {
             Class clazz = (Class) type;
 
             if (clazz.isSynthetic() || clazz.isLocalClass() || clazz.isAnonymousClass()) {
-                throw new Error("Not supported");
+                throw new IllegalArgumentException("Class not supported.");
             }
 
             if (clazz == Void.TYPE) {
@@ -82,7 +82,7 @@ public final class CsType {
 
             CsType result = new CsType();
             result.displayName = getCsClassName(clazz);
-            result.namespacesUsed.add(clazz.getPackage().getName());
+            result.namespacesUsed.add(getCsNamespace(clazz));
             return result;
         } else if (TypeVariable.class.isAssignableFrom(type.getClass())) {
             //TODO: handle bounds (C# 'where' type param constraints
@@ -149,15 +149,30 @@ public final class CsType {
         throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", type));
     }
 
-    public static String getCsClassName(Class clazz){
+    public static String getCsClassName(Class clazz) {
         String result = clazz.getSimpleName();
 
         Class declaringClass = clazz.getDeclaringClass();
-        while (declaringClass != null){
+        while (declaringClass != null) {
             result = declaringClass.getSimpleName() + "_" + result;
             declaringClass = declaringClass.getDeclaringClass();
         }
 
-        return result;
+        return CsTemplateHelper.escapeCsKeyword(result);
+    }
+
+    public static String getCsNamespace(Class clazz) {
+        String packageName = clazz.getPackage().getName();
+        String[] splits = packageName.split("\\.");
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < splits.length; i++) {
+            sb.append(CsTemplateHelper.escapeCsKeyword(splits[i]));
+
+            if (i < splits.length - 1)
+                sb.append(".");
+        }
+
+        return sb.toString();
     }
 }

@@ -24,7 +24,7 @@ public class CsEnumTemplate implements ICsTemplate {
         _classCsType = CsType.getCsType(_class);
         _superclassCsType = CsType.getCsType(_class.getGenericSuperclass());
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
                 .stream()
                 .map(CsType::getCsType)
                 .collect(Collectors.toList());
@@ -63,9 +63,8 @@ public class CsEnumTemplate implements ICsTemplate {
             result.append(" sealed");
         result.append(" class ");
         result.append(_classCsType.displayName);
-        result.append(" : ");
-        result.append(_superclassCsType.displayName);
 
+        CsTemplateHelper.renderBaseClass(result, _class, _superclassCsType);
         CsTemplateHelper.renderImplementedInterfaces(result, _class, _implementedInterfacesCsTypes);
 
         result.newLine();

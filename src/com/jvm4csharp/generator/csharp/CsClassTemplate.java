@@ -23,7 +23,7 @@ public class CsClassTemplate implements ICsTemplate {
         _classCsType = CsType.getCsType(_class);
         _superclassCsType = CsType.getCsType(_class.getGenericSuperclass());
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
                 .stream()
                 .map(CsType::getCsType)
                 .collect(Collectors.toList());
@@ -61,14 +61,14 @@ public class CsClassTemplate implements ICsTemplate {
             result.append(" abstract");
         if (isFinal)
             result.append(" sealed");
-        result.append(" partial class ");
+        if (addPartialKeyword(_class))
+            result.append(" partial");
+
+        result.append(" class ");
         result.append(_classCsType.displayName);
 
         CsTemplateHelper.renderTypeParameters(result, _class);
-
-        result.append(" : ");
-        result.append(_superclassCsType.displayName);
-
+        CsTemplateHelper.renderBaseClass(result, _class, _superclassCsType);
         CsTemplateHelper.renderImplementedInterfaces(result, _class, _implementedInterfacesCsTypes);
 
         result.newLine();
@@ -120,5 +120,14 @@ public class CsClassTemplate implements ICsTemplate {
             result.addAll(Arrays.asList(template.getReferencedCsTypes()));
 
         return result.toArray(new CsType[result.size()]);
+    }
+
+    private static boolean addPartialKeyword(Class clazz) {
+        if (clazz == Object.class ||
+                clazz == Throwable.class ||
+                clazz == Class.class ||
+                clazz == String.class)
+            return true;
+        return false;
     }
 }

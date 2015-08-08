@@ -5,7 +5,6 @@ import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 
 //TODO: render outer class "this" parameter for inner classes
@@ -28,7 +27,7 @@ public class CsConstructorTemplate implements ICsTemplate {
     @Override
     public GenerationResult generate() {
         String internalSignature = ReflectionHelper.getInternalSignature(_constructor);
-        Parameter[] parameters = _constructor.getParameters();
+        String[] csParameterNames = CsTemplateHelper.getCsParameterNames(_constructor);
 
         GenerationResult result = new GenerationResult();
 
@@ -38,15 +37,19 @@ public class CsConstructorTemplate implements ICsTemplate {
         result.append(CsType.getCsClassName(_declaringClass));
 
         result.append('(');
-        for (int i = 0; i < parameters.length; i++) {
+        for (int i = 0; i < csParameterNames.length; i++) {
             result.append(_parametersCsTypes[i].displayName);
             result.append(TemplateHelper.SPACE);
-            result.append(parameters[i].getName());
+            result.append(csParameterNames[i]);
 
-            if (i < parameters.length - 1)
+            if (i < csParameterNames.length - 1)
                 result.append(", ");
         }
-        result.appendNewLine(") : base(JavaVoid.Void)");
+        result.append(")");
+        if (_declaringClass != Object.class && _declaringClass != Throwable.class)
+            result.append(" : base(JavaVoid.Void)");
+
+        result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
         // body
@@ -55,9 +58,9 @@ public class CsConstructorTemplate implements ICsTemplate {
         result.append(internalSignature);
         result.append("\"");
 
-        for (int i = 0; i < parameters.length; i++) {
+        for (String csParameterName : csParameterNames) {
             result.append(", ");
-            result.append(parameters[i].getName());
+            result.append(csParameterName);
         }
 
         result.appendNewLine(");");

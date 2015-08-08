@@ -63,8 +63,7 @@ public class CsProxyGenerator implements IProxyGenerator {
     }
 
     private GenerationResult generateTemplate(Class clazz, ICsTemplate template, GenerationResultLocation location) {
-        String packageName = clazz.getPackage().getName();
-        String currentNamespace = packageName;
+        String currentNamespace = CsType.getCsNamespace(clazz);
         if (_namespacePrefix != null)
             currentNamespace = _namespacePrefix + "." + currentNamespace;
 

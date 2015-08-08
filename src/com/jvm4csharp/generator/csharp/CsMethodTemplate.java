@@ -5,8 +5,9 @@ import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 //TODO: var args
 public class CsMethodTemplate implements ICsTemplate {
@@ -31,11 +32,11 @@ public class CsMethodTemplate implements ICsTemplate {
     public GenerationResult generate() {
         boolean isStatic = ReflectionHelper.isStatic(_method);
 
-        String name = _method.getName();
+        String methodName = _method.getName();
         String internalSignature = ReflectionHelper.getInternalSignature(_method);
         CsType declaringClassCsType = CsType.getCsType(_declaringClass);
-        Parameter[] parameters = _method.getParameters();
         Class returnType = _method.getReturnType();
+        String[] csParameterNames = CsTemplateHelper.getCsParameterNames(_method);
 
         GenerationResult result = new GenerationResult();
 
@@ -51,17 +52,17 @@ public class CsMethodTemplate implements ICsTemplate {
 
         result.append(_returnCsType.displayName);
         result.append(TemplateHelper.SPACE);
-        result.append(name);
+        result.append(CsTemplateHelper.escapeCsKeyword(methodName));
 
         CsTemplateHelper.renderTypeParameters(result, _method);
 
         result.append('(');
-        for (int i = 0; i < parameters.length; i++) {
+        for (int i = 0; i < csParameterNames.length; i++) {
             result.append(_parametersCsTypes[i].displayName);
             result.append(TemplateHelper.SPACE);
-            result.append(parameters[i].getName());
+            result.append(csParameterNames[i]);
 
-            if (i < parameters.length - 1)
+            if (i < csParameterNames.length - 1)
                 result.append(", ");
         }
         result.append(')');
@@ -95,14 +96,14 @@ public class CsMethodTemplate implements ICsTemplate {
                 result.append("), ");
             }
             result.append("\"");
-            result.append(name);
+            result.append(methodName);
             result.append("\", \"");
             result.append(internalSignature);
             result.append("\"");
 
-            for (int i = 0; i < parameters.length; i++) {
+            for (String csParameterName : csParameterNames) {
                 result.append(", ");
-                result.append(parameters[i].getName());
+                result.append(csParameterName);
             }
 
             result.appendNewLine(");");
@@ -114,11 +115,9 @@ public class CsMethodTemplate implements ICsTemplate {
 
     @Override
     public CsType[] getReferencedCsTypes() {
-        CsType[] result = new CsType[_parametersCsTypes.length + 1];
-        result[0] = _returnCsType;
-        for (int i = 0; i < _parametersCsTypes.length; i++) {
-            result[i + 1] = _parametersCsTypes[i];
-        }
-        return result;
+        ArrayList<CsType> result = new ArrayList<>();
+        result.add(_returnCsType);
+        result.addAll(Arrays.asList(_parametersCsTypes));
+        return result.toArray(new CsType[result.size()]);
     }
 }

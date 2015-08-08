@@ -48,7 +48,7 @@ public class Main {
     private static boolean ParseArgs(String[] args) {
         _outputDirectory = "E:\\work\\github\\jvm4csharp\\jvm4csharp\\generated";
         _namespacePrefix = "jvm4csharp";
-        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text", "java.security"};
+        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text", "java.security", "java.time"};
         return true;
     }
 

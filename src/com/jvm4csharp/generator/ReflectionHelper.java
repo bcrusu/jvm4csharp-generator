@@ -94,11 +94,6 @@ public final class ReflectionHelper {
 
         // include missing methods from implemented interfaces
         if (isAbstract(clazz)) {
-            if (clazz.getName().contains("Writer"))
-            {
-                Class[] interface22s = clazz.getInterfaces();
-            }
-
             Class[] interfaces = clazz.getInterfaces();
             for (Class iface : interfaces) {
                 Method[] interfaceMethods = iface.getMethods();
@@ -127,10 +122,20 @@ public final class ReflectionHelper {
                 .collect(Collectors.toList());
     }
 
-    public static List<Type> getImplementedInterfaces(Class clazz) {
-        return Arrays.asList(clazz.getGenericInterfaces())
-                .stream()
-                .collect(Collectors.toList());
+    //TODO: copy public interfaces from private interface
+    public static List<Type> getPublicImplementedInterfaces(Class clazz) {
+        // API docs states for both methods: "The order of the interface objects in the array corresponds to the
+        // order of the interface names in the implements clause of the declaration of the class"
+        Class[] interfaces = clazz.getInterfaces();
+        Type[] genericInterfaces = clazz.getGenericInterfaces();
+
+        List<Type> result = new ArrayList<>();
+        for (int i = 0; i < interfaces.length; i++) {
+            if (isPublic(interfaces[i]))
+                result.add(genericInterfaces[i]);
+        }
+
+        return result;
     }
 
     public static String getInternalTypeName(Class clazz) {

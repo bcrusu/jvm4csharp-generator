@@ -1,5 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
@@ -8,38 +9,38 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class CsInterfaceTemplate implements ICsTemplate {
-    private final Class _class;
+    private final ClassDetails _classDetails;
     private final CsType _classCsType;
     private final List<CsType> _implementedInterfacesCsTypes;
     private final List<CsPropertyTemplate> _fields;
     private final List<CsMethodTemplate> _methods;
 
-    public CsInterfaceTemplate(Class clazz) {
-        _class = clazz;
-        _classCsType = CsType.getCsType(_class);
+    public CsInterfaceTemplate(ClassDetails classDetails) {
+        _classDetails = classDetails;
+        _classCsType = CsType.getCsType(classDetails.Class);
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = classDetails.getImplementedInterfaces()
                 .stream()
                 .map(CsType::getCsType)
                 .collect(Collectors.toList());
 
-        _fields = ReflectionHelper.getPublicDeclaredFields(_class)
+        _fields = classDetails.getFields()
                 .stream()
                 .filter(x -> !ReflectionHelper.isStatic(x))
-                .map(x -> new CsPropertyTemplate(x, _class))
+                .map(x -> new CsPropertyTemplate(x, classDetails))
                 .collect(Collectors.toList());
 
-        _methods = ReflectionHelper.getPublicDeclaredMethods(_class)
+        _methods = classDetails.getMethods()
                 .stream()
                 .filter(x -> !ReflectionHelper.isStatic(x))
                 .filter(x -> !x.isDefault())
-                .map(x -> new CsMethodTemplate(x, _class))
+                .map(x -> new CsMethodTemplate(x, classDetails))
                 .collect(Collectors.toList());
     }
 
     @Override
     public GenerationResult generate() {
-        String internalTypeName = ReflectionHelper.getInternalTypeName(_class);
+        String internalTypeName = ReflectionHelper.getInternalTypeName(_classDetails.Class);
 
         GenerationResult result = new GenerationResult();
 
@@ -50,8 +51,8 @@ public class CsInterfaceTemplate implements ICsTemplate {
         result.append("public interface ");
         result.append(_classCsType.displayName);
 
-        CsTemplateHelper.renderTypeParameters(result, _class);
-        CsTemplateHelper.renderImplementedInterfaces(result, _class, _implementedInterfacesCsTypes);
+        CsTemplateHelper.renderTypeParameters(result, _classDetails.Class);
+        CsTemplateHelper.renderImplementedInterfaces(result, _classDetails.Class, _implementedInterfacesCsTypes);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

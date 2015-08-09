@@ -1,5 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
@@ -10,25 +11,25 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class CsInterfaceCompanionTemplate implements ICsTemplate {
-    private final Class _class;
+    private final ClassDetails _classDetails;
     private final CsType _classCsType;
     private final List<CsPropertyTemplate> _fields;
     private final List<CsMethodTemplate> _methods;
 
-    public CsInterfaceCompanionTemplate(Class clazz) {
-        _class = clazz;
-        _classCsType = CsType.getCsType(_class);
+    public CsInterfaceCompanionTemplate(ClassDetails classDetails) {
+        _classDetails = classDetails;
+        _classCsType = CsType.getCsType(classDetails.Class);
 
-        _fields = ReflectionHelper.getPublicDeclaredFields(_class)
+        _fields = classDetails.getFields()
                 .stream()
                 .filter(ReflectionHelper::isStatic)
-                .map(x -> new CsPropertyTemplate(x, _class))
+                .map(x -> new CsPropertyTemplate(x, classDetails))
                 .collect(Collectors.toList());
 
-        _methods = ReflectionHelper.getPublicDeclaredMethods(_class)
+        _methods = classDetails.getMethods()
                 .stream()
                 .filter(x -> ReflectionHelper.isStatic(x) || x.isDefault())
-                .map(x -> new CsMethodTemplate(x, _class))
+                .map(x -> new CsMethodTemplate(x, classDetails))
                 .collect(Collectors.toList());
     }
 
@@ -45,10 +46,10 @@ public class CsInterfaceCompanionTemplate implements ICsTemplate {
         LinkedList<GenerationResult> generationResults = new LinkedList<>();
 
         for (ICsTemplate template : _fields)
-            generationResults.addAll(Arrays.asList(template.generate()));
+            generationResults.add(template.generate());
 
         for (ICsTemplate template : _methods)
-            generationResults.addAll(Arrays.asList(template.generate()));
+            generationResults.add(template.generate());
 
         for (int i = 0; i < generationResults.size(); i++) {
             generationResults.get(i).renderTo(result, 1);

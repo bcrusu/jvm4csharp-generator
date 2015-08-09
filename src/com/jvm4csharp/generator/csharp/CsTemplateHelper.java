@@ -79,7 +79,7 @@ public class CsTemplateHelper {
                 result.append(TemplateHelper.TAB);
                 result.append("protected ");
                 result.append(csClassName);
-                result.appendNewLine("(JavaVoid v) : base(v) { }");
+                result.append("(JavaVoid v) : base(v) {}");
                 addedProxyCtor = true;
             }
         } else {
@@ -87,21 +87,28 @@ public class CsTemplateHelper {
                 result.append(TemplateHelper.TAB);
                 result.append("private ");
                 result.append(csClassName);
-                result.appendNewLine("() : base(JavaVoid.Void) { }");
+                result.append("() : base(JavaVoid.Void) {}");
                 addedProxyCtor = true;
             }
         }
 
         if (!isAbstract) {
-            if (addedProxyCtor)
+            if (addedProxyCtor) {
                 result.newLine();
+                result.newLine();
+            }
 
-            for (ICsTemplate template : constructors)
+            for (int i = 0; i < constructors.size(); i++) {
+                ICsTemplate template = constructors.get(i);
                 template.generate().renderTo(result, 1);
+
+                if (i < constructors.size() - 1)
+                    result.newLine();
+            }
         }
     }
 
-    public static String[] getCsParameterNames(Executable executable){
+    public static String[] getCsParameterNames(Executable executable) {
         Parameter[] parameters = executable.getParameters();
         String[] result = new String[parameters.length];
 

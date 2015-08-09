@@ -1,5 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
@@ -10,7 +11,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class CsClassTemplate implements ICsTemplate {
-    private final Class _class;
+    private final ClassDetails _classDetails;
     private final CsType _classCsType;
     private final CsType _superclassCsType;
     private final List<CsType> _implementedInterfacesCsTypes;
@@ -18,37 +19,37 @@ public class CsClassTemplate implements ICsTemplate {
     private final List<CsMethodTemplate> _methods;
     private final List<CsConstructorTemplate> _constructors;
 
-    public CsClassTemplate(Class clazz) {
-        _class = clazz;
-        _classCsType = CsType.getCsType(_class);
-        _superclassCsType = CsType.getCsType(_class.getGenericSuperclass());
+    public CsClassTemplate(ClassDetails classDetails) {
+        _classDetails = classDetails;
+        _classCsType = CsType.getCsType(classDetails.Class);
+        _superclassCsType = CsType.getCsType(classDetails.Class.getGenericSuperclass());
 
-        _implementedInterfacesCsTypes = ReflectionHelper.getPublicImplementedInterfaces(_class)
+        _implementedInterfacesCsTypes = classDetails.getImplementedInterfaces()
                 .stream()
                 .map(CsType::getCsType)
                 .collect(Collectors.toList());
 
-        _fields = ReflectionHelper.getPublicDeclaredFields(_class)
+        _fields = classDetails.getFields()
                 .stream()
-                .map(x -> new CsPropertyTemplate(x, _class))
+                .map(x -> new CsPropertyTemplate(x, classDetails))
                 .collect(Collectors.toList());
 
-        _methods = ReflectionHelper.getPublicDeclaredMethods(_class)
+        _methods = classDetails.getMethods()
                 .stream()
-                .map(x -> new CsMethodTemplate(x, _class))
+                .map(x -> new CsMethodTemplate(x, classDetails))
                 .collect(Collectors.toList());
 
-        _constructors = ReflectionHelper.getPublicDeclaredConstructors(_class)
+        _constructors = classDetails.getConstructors()
                 .stream()
-                .map(x -> new CsConstructorTemplate(x, _class))
+                .map(x -> new CsConstructorTemplate(x, classDetails))
                 .collect(Collectors.toList());
     }
 
     @Override
     public GenerationResult generate() {
-        boolean isFinal = ReflectionHelper.isFinal(_class);
-        boolean isAbstract = ReflectionHelper.isAbstract(_class);
-        String internalTypeName = ReflectionHelper.getInternalTypeName(_class);
+        boolean isFinal = ReflectionHelper.isFinal(_classDetails.Class);
+        boolean isAbstract = ReflectionHelper.isAbstract(_classDetails.Class);
+        String internalTypeName = ReflectionHelper.getInternalTypeName(_classDetails.Class);
 
         GenerationResult result = new GenerationResult();
 
@@ -61,20 +62,20 @@ public class CsClassTemplate implements ICsTemplate {
             result.append(" abstract");
         if (isFinal)
             result.append(" sealed");
-        if (addPartialKeyword(_class))
+        if (addPartialKeyword(_classDetails.Class))
             result.append(" partial");
 
         result.append(" class ");
         result.append(_classCsType.displayName);
 
-        CsTemplateHelper.renderTypeParameters(result, _class);
-        CsTemplateHelper.renderBaseClass(result, _class, _superclassCsType);
-        CsTemplateHelper.renderImplementedInterfaces(result, _class, _implementedInterfacesCsTypes);
+        CsTemplateHelper.renderTypeParameters(result, _classDetails.Class);
+        CsTemplateHelper.renderBaseClass(result, _classDetails.Class, _superclassCsType);
+        CsTemplateHelper.renderImplementedInterfaces(result, _classDetails.Class, _implementedInterfacesCsTypes);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        CsTemplateHelper.renderConstructors(result, _class, _constructors);
+        CsTemplateHelper.renderConstructors(result, _classDetails.Class, _constructors);
 
         LinkedList<GenerationResult> generationResults = new LinkedList<>();
 
@@ -102,7 +103,7 @@ public class CsClassTemplate implements ICsTemplate {
 
     @Override
     public CsType[] getReferencedCsTypes() {
-        boolean isAbstract = ReflectionHelper.isAbstract(_class);
+        boolean isAbstract = ReflectionHelper.isAbstract(_classDetails.Class);
         LinkedList<CsType> result = new LinkedList<>();
 
         result.add(_classCsType);

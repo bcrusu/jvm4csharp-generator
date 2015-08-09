@@ -1,5 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.ReflectionHelper;
 
 public class CsTemplateFactory {
@@ -18,24 +19,26 @@ public class CsTemplateFactory {
         return true;
     }
 
-    public static ICsTemplate createTemplate(Class clazz) {
+    public static ICsTemplate createTemplate(ClassDetails classDetails) {
+        Class clazz = classDetails.Class;
+
         if (clazz.isEnum())
-            return new CsEnumTemplate(clazz);
+            return new CsEnumTemplate(classDetails);
         else if (clazz.isInterface()) {
-            return new CsInterfaceTemplate(clazz);
+            return new CsInterfaceTemplate(classDetails);
 
             //if (interfaceNeedsCompanionClass(clazz))
             //TODO:
         }
 
-        return new CsClassTemplate(clazz);
+        return new CsClassTemplate(classDetails);
     }
 
-    private static boolean interfaceNeedsCompanionClass(Class clazz) {
-        if (!clazz.isInterface())
+    private static boolean interfaceNeedsCompanionClass(ClassDetails classDetails) {
+        if (!classDetails.Class.isInterface())
             return false;
 
-        long staticFieldsCount = ReflectionHelper.getPublicDeclaredFields(clazz)
+        long staticFieldsCount = classDetails.getFields()
                 .stream()
                 .filter(ReflectionHelper::isStatic)
                 .count();
@@ -43,7 +46,7 @@ public class CsTemplateFactory {
         if (staticFieldsCount > 0)
             return true;
 
-        long staticAndDefaultMethodCount = ReflectionHelper.getPublicDeclaredMethods(clazz)
+        long staticAndDefaultMethodCount = classDetails.getMethods()
                 .stream()
                 .filter(x -> ReflectionHelper.isStatic(x) || x.isDefault())
                 .count();

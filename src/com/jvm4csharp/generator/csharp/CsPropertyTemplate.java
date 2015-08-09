@@ -1,21 +1,21 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
 
 public class CsPropertyTemplate implements ICsTemplate {
     private final Field _field;
     private final CsType _fieldCsType;
-    private Class _declaringClass;
+    private ClassDetails _declaringClassDetails;
 
-    public CsPropertyTemplate(Field field, Class declaringClass) {
+    public CsPropertyTemplate(Field field, ClassDetails declaringClassDetails) {
         _field = field;
         _fieldCsType = CsType.getCsType(_field.getGenericType());
-        _declaringClass = declaringClass;
+        _declaringClassDetails = declaringClassDetails;
     }
 
     @Override
@@ -25,7 +25,7 @@ public class CsPropertyTemplate implements ICsTemplate {
 
         String fieldName = _field.getName();
         String internalTypeName = ReflectionHelper.getInternalTypeName(_field.getType());
-        CsType declaringClassCsType = CsType.getCsType(_declaringClass);
+        CsType declaringClassCsType = CsType.getCsType(_declaringClassDetails.Class);
 
         GenerationResult result = new GenerationResult();
 
@@ -34,7 +34,7 @@ public class CsPropertyTemplate implements ICsTemplate {
         result.append(internalTypeName);
         result.appendNewLine("\")]");
 
-        if (!_declaringClass.isInterface()) {
+        if (!_declaringClassDetails.Class.isInterface()) {
             result.append("public ");
             if (isStatic)
                 result.append("static ");
@@ -45,7 +45,7 @@ public class CsPropertyTemplate implements ICsTemplate {
         result.append(CsTemplateHelper.escapeCsKeyword(fieldName));
 
 
-        if (_declaringClass.isInterface()) {
+        if (_declaringClassDetails.Class.isInterface()) {
             result.append(" { get; ");
             if (!isFinal)
                 result.append("set; ");

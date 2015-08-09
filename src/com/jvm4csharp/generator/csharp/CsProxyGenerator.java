@@ -1,12 +1,8 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.GenerationResultLocation;
-import com.jvm4csharp.generator.IProxyGenerator;
-import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.*;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -18,13 +14,13 @@ public class CsProxyGenerator implements IProxyGenerator {
     }
 
     @Override
-    public GenerationResult generate(Class clazz) {
-        ICsTemplate template = CsTemplateFactory.createTemplate(clazz);
-        GenerationResultLocation location = getLocation(clazz);
+    public GenerationResult generate(ClassDetails classDetails) {
+        ICsTemplate template = CsTemplateFactory.createTemplate(classDetails);
+        GenerationResultLocation location = getLocation(classDetails.Class);
 
         //TODO: generate companion templates
 
-        return generateTemplate(clazz, template, location);
+        return generateTemplate(classDetails.Class, template, location);
     }
 
     @Override

@@ -34,7 +34,8 @@ public class Main {
 
             System.out.format("Generating class: %1s", clazz.getName());
 
-            GenerationResult generationResult = generator.generate(clazz);
+            ClassDetails classDetails = new ClassDetails(clazz);
+            GenerationResult generationResult = generator.generate(classDetails);
 
             outputWriter.write(generationResult);
 

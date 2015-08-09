@@ -1,5 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
@@ -12,13 +13,13 @@ import java.util.Arrays;
 //TODO: var args
 public class CsMethodTemplate implements ICsTemplate {
     private final Method _method;
-    private final Class _declaringClass;
+    private final ClassDetails _declaringClassDetails;
     private final CsType _returnCsType;
     private final CsType[] _parametersCsTypes;
 
-    public CsMethodTemplate(Method method, Class declaringClass) {
+    public CsMethodTemplate(Method method, ClassDetails declaringClassDetails) {
         _method = method;
-        _declaringClass = declaringClass;
+        _declaringClassDetails = declaringClassDetails;
         _returnCsType = CsType.getCsType(method.getGenericReturnType());
 
         Type[] parameterTypes = method.getGenericParameterTypes();
@@ -34,7 +35,7 @@ public class CsMethodTemplate implements ICsTemplate {
 
         String methodName = _method.getName();
         String internalSignature = ReflectionHelper.getInternalSignature(_method);
-        CsType declaringClassCsType = CsType.getCsType(_declaringClass);
+        CsType declaringClassCsType = CsType.getCsType(_declaringClassDetails.Class);
         Class returnType = _method.getReturnType();
         String[] csParameterNames = CsTemplateHelper.getCsParameterNames(_method);
 
@@ -45,7 +46,7 @@ public class CsMethodTemplate implements ICsTemplate {
         result.append(internalSignature);
         result.appendNewLine("\")]");
 
-        if (!_declaringClass.isInterface())
+        if (!_declaringClassDetails.Class.isInterface())
             result.append("public ");
         if (isStatic)
             result.append("static ");
@@ -68,7 +69,7 @@ public class CsMethodTemplate implements ICsTemplate {
         result.append(')');
 
         // body
-        if (_declaringClass.isInterface()) {
+        if (_declaringClassDetails.Class.isInterface()) {
             result.append(";");
         } else {
             result.newLine();

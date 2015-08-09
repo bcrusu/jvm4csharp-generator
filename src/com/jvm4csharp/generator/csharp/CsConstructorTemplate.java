@@ -1,5 +1,6 @@
 package com.jvm4csharp.generator.csharp;
 
+import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
@@ -7,15 +8,14 @@ import com.jvm4csharp.generator.TemplateHelper;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 
-//TODO: render outer class "this" parameter for inner classes
 public class CsConstructorTemplate implements ICsTemplate {
     private final Constructor _constructor;
-    private final Class _declaringClass;
+    private final ClassDetails _declaringClassDetails;
     private final CsType[] _parametersCsTypes;
 
-    public CsConstructorTemplate(Constructor constructor, Class declaringClass){
+    public CsConstructorTemplate(Constructor constructor, ClassDetails declaringClassDetails){
         _constructor = constructor;
-        _declaringClass = declaringClass;
+        _declaringClassDetails = declaringClassDetails;
 
         Type[] parameterTypes = constructor.getGenericParameterTypes();
         _parametersCsTypes = new CsType[parameterTypes.length];
@@ -34,7 +34,7 @@ public class CsConstructorTemplate implements ICsTemplate {
         // signature
         result.append("public");
         result.append(TemplateHelper.SPACE);
-        result.append(CsType.getCsClassName(_declaringClass));
+        result.append(CsType.getCsClassName(_declaringClassDetails.Class));
 
         result.append('(');
         for (int i = 0; i < csParameterNames.length; i++) {
@@ -46,7 +46,7 @@ public class CsConstructorTemplate implements ICsTemplate {
                 result.append(", ");
         }
         result.append(")");
-        if (_declaringClass != Object.class && _declaringClass != Throwable.class)
+        if (_declaringClassDetails.Class != Object.class && _declaringClassDetails.Class != Throwable.class)
             result.append(" : base(JavaVoid.Void)");
 
         result.newLine();

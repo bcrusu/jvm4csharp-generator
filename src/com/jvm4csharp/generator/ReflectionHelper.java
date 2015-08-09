@@ -1,8 +1,6 @@
 package com.jvm4csharp.generator;
 
 import java.lang.reflect.*;
-import java.util.*;
-import java.util.stream.Collectors;
 
 public final class ReflectionHelper {
     public static boolean isPublic(int modifier) {
@@ -51,91 +49,6 @@ public final class ReflectionHelper {
 
     public static boolean isAbstract(Class clazz) {
         return Modifier.isAbstract(clazz.getModifiers());
-    }
-
-    public static List<Field> getPublicDeclaredFields(Class clazz) {
-        return Arrays.asList(clazz.getDeclaredFields())
-                .stream()
-                .filter(x -> isPublic(x))
-                .collect(Collectors.toList());
-    }
-
-    public static List<Method> getPublicDeclaredMethods(Class clazz) {
-        List<Method> declaredMethods = Arrays.asList(clazz.getDeclaredMethods())
-                .stream()
-                .filter(x -> isPublic(x))
-                .collect(Collectors.toList());
-
-        if (clazz.isInterface()) {
-            return declaredMethods;
-        }
-
-        List<Method> result = new ArrayList<>();
-
-        // filter superclass methods with the same signature and return type
-        if (clazz != Object.class) {
-            Class superclass = clazz.getSuperclass();
-            List<Method> superclassMethods = Arrays.asList(superclass.getMethods());
-
-            for (Method method : declaredMethods) {
-                boolean ok = true;
-                for (Method superclassMethod : superclassMethods)
-                    if (getMethodsAreEquivalent(method, superclassMethod)) {
-                        ok = false;
-                        break;
-                    }
-
-                if (ok)
-                    result.add(method);
-            }
-        } else {
-            result.addAll(declaredMethods);
-        }
-
-        // include missing methods from implemented interfaces
-        if (isAbstract(clazz)) {
-            Class[] interfaces = clazz.getInterfaces();
-            for (Class iface : interfaces) {
-                Method[] interfaceMethods = iface.getMethods();
-                for (Method interfaceMethod : interfaceMethods) {
-                    boolean ok = true;
-                    for (Method method : result) {
-                        if (getMethodsAreEquivalent(method, interfaceMethod)) {
-                            ok = false;
-                            break;
-                        }
-                    }
-
-                    if (ok)
-                        result.add(interfaceMethod);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    public static List<Constructor> getPublicDeclaredConstructors(Class clazz) {
-        return Arrays.asList(clazz.getDeclaredConstructors())
-                .stream()
-                .filter(x -> isPublic(x))
-                .collect(Collectors.toList());
-    }
-
-    //TODO: copy public interfaces from private interface
-    public static List<Type> getPublicImplementedInterfaces(Class clazz) {
-        // API docs states for both methods: "The order of the interface objects in the array corresponds to the
-        // order of the interface names in the implements clause of the declaration of the class"
-        Class[] interfaces = clazz.getInterfaces();
-        Type[] genericInterfaces = clazz.getGenericInterfaces();
-
-        List<Type> result = new ArrayList<>();
-        for (int i = 0; i < interfaces.length; i++) {
-            if (isPublic(interfaces[i]))
-                result.add(genericInterfaces[i]);
-        }
-
-        return result;
     }
 
     public static String getInternalTypeName(Class clazz) {

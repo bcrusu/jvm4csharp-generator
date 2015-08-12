@@ -1,158 +1,137 @@
 package com.jvm4csharp.generator.csharp;
 
-import java.lang.reflect.*;
-import java.util.HashSet;
-import java.util.Set;
+import com.jvm4csharp.generator.reflectx.*;
 
-public final class CsType {
-    public String displayName;
-    public Set<String> namespacesUsed;
+import java.util.List;
 
-    public CsType() {
-        namespacesUsed = new HashSet<>();
+public class CsType {
+    public static String getDisplayName(XClassDefinition xClassDefinition) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getSimpleClassName(xClassDefinition.getXClass()));
+
+        List<XType> actualTypeArguments = xClassDefinition.getActualTypeArguments();
+        if (actualTypeArguments.size() > 0) {
+            sb.append("<");
+            for (int i = 0; i < actualTypeArguments.size(); i++) {
+                XType actualTypeArgument = actualTypeArguments.get(i);
+                sb.append(getDisplayName(actualTypeArgument));
+                if (i < actualTypeArguments.size() - 1)
+                    sb.append(", ");
+            }
+            sb.append(">");
+        }
+
+        return sb.toString();
     }
 
-    public static CsType getCsType(Type type) {
-        if (Class.class.isAssignableFrom(type.getClass())) {
-            Class clazz = (Class) type;
+    public static String getDisplayName(XType xType) {
+        if (xType instanceof XClass) {
+            XClass xClass = (XClass) xType;
 
-            if (clazz.isSynthetic() || clazz.isLocalClass() || clazz.isAnonymousClass()) {
-                throw new IllegalArgumentException("Class not supported.");
+            if (xClass.isClass(Void.TYPE)) {
+                return "void";
             }
 
-            if (clazz == Void.TYPE) {
-                CsType result = new CsType();
-                result.displayName = "void";
-                return result;
-            }
-
-            if (clazz.isPrimitive()) {
-                CsType result = new CsType();
-
-                if (clazz == Boolean.TYPE)
-                    result.displayName = "bool";
-                else if (clazz == Byte.TYPE)
-                    result.displayName = "byte";
-                else if (clazz == Character.TYPE)
-                    result.displayName = "char";
-                else if (clazz == Short.TYPE)
-                    result.displayName = "short";
-                else if (clazz == Integer.TYPE)
-                    result.displayName = "int";
-                else if (clazz == Long.TYPE)
-                    result.displayName = "long";
-                else if (clazz == Float.TYPE)
-                    result.displayName = "float";
-                else if (clazz == Double.TYPE)
-                    result.displayName = "double";
+            if (xClass.isPrimitive()) {
+                if (xClass.isClass(Boolean.TYPE))
+                    return "bool";
+                else if (xClass.isClass(Byte.TYPE))
+                    return "byte";
+                else if (xClass.isClass(Character.TYPE))
+                    return "char";
+                else if (xClass.isClass(Short.TYPE))
+                    return "short";
+                else if (xClass.isClass(Integer.TYPE))
+                    return "int";
+                else if (xClass.isClass(Long.TYPE))
+                    return "long";
+                else if (xClass.isClass(Float.TYPE))
+                    return "float";
+                else if (xClass.isClass(Double.TYPE))
+                    return "double";
                 else
-                    throw new IllegalArgumentException(String.format("Unrecognized primitive type '%1s'.", clazz));
-                return result;
+                    throw new IllegalArgumentException(String.format("Unrecognized primitive type '%1s'.", xClass));
             }
 
-            if (clazz.isArray()) {
-                CsType result = new CsType();
-                Class elementType = clazz.getComponentType();
-                result.namespacesUsed.add("jvm4csharp.ArrayUtils");
+            if (xClass.isArray()) {
+                XClass elementType = xClass.getArrayComponentType();
 
-                if (elementType == Boolean.TYPE)
-                    result.displayName = "BooleanArray";
-                else if (elementType == Byte.TYPE)
-                    result.displayName = "ByteArray";
-                else if (elementType == Character.TYPE)
-                    result.displayName = "CharArray";
-                else if (elementType == Short.TYPE)
-                    result.displayName = "ShortArray";
-                else if (elementType == Integer.TYPE)
-                    result.displayName = "IntArray";
-                else if (elementType == Long.TYPE)
-                    result.displayName = "LongArray";
-                else if (elementType == Float.TYPE)
-                    result.displayName = "FloatArray";
-                else if (elementType == Float.TYPE)
-                    result.displayName = "DoubleArray";
-                else {
-                    CsType elementCsType = getCsType(elementType);
-                    result.displayName = "ObjectArray<" + elementCsType.displayName + ">";
-                    result.namespacesUsed.addAll(elementCsType.namespacesUsed);
-                }
-
-                return result;
+                if (elementType.isClass(Boolean.TYPE))
+                    return "BooleanArray";
+                else if (elementType.isClass(Byte.TYPE))
+                    return "ByteArray";
+                else if (elementType.isClass(Character.TYPE))
+                    return "CharArray";
+                else if (elementType.isClass(Short.TYPE))
+                    return "ShortArray";
+                else if (elementType.isClass(Integer.TYPE))
+                    return "IntArray";
+                else if (elementType.isClass(Long.TYPE))
+                    return "LongArray";
+                else if (elementType.isClass(Float.TYPE))
+                    return "FloatArray";
+                else if (elementType.isClass(Double.TYPE))
+                    return "DoubleArray";
+                else
+                    return "ObjectArray<" + getDisplayName(elementType) + ">";
             }
-
-            CsType result = new CsType();
-            result.displayName = getCsClassName(clazz);
-            result.namespacesUsed.add(getCsNamespace(clazz));
-            return result;
-        } else if (TypeVariable.class.isAssignableFrom(type.getClass())) {
-            //TODO: handle bounds (C# 'where' type param constraints
-            TypeVariable typeVariable = (TypeVariable) type;
-            CsType result = new CsType();
-            result.displayName = typeVariable.getName();
-            return result;
-        } else if (ParameterizedType.class.isAssignableFrom(type.getClass())) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
-            Type rawType = parameterizedType.getRawType();
-            CsType rawTypeCsType = getCsType(rawType);
-
-            CsType result = new CsType();
-            result.namespacesUsed.addAll(rawTypeCsType.namespacesUsed);
-
-            Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
 
             StringBuilder sb = new StringBuilder();
-            sb.append(rawTypeCsType.displayName);
-            sb.append("<");
-            for (int i = 0; i < actualTypeArguments.length; i++) {
-                Type actualTypeArgument = actualTypeArguments[i];
-                CsType csType = getCsType(actualTypeArgument);
-                result.namespacesUsed.addAll(csType.namespacesUsed);
+            sb.append(getSimpleClassName(xClass));
 
-                sb.append(csType.displayName);
-                if (i < actualTypeArguments.length - 1)
+            List<XTypeVariable> typeParameters = xClass.getTypeParameters();
+            if (typeParameters.size() > 0) {
+                sb.append("<");
+                for (int i = 0; i < typeParameters.size(); i++) {
+                    sb.append("IJavaObject");
+
+                    if (i < typeParameters.size() - 1)
+                        sb.append(", ");
+                }
+                sb.append(">");
+            }
+
+            return sb.toString();
+        } else if (xType instanceof XTypeVariable) {
+            //TODO: handle bounds - C# 'where' type param constraints
+            XTypeVariable xTypeVariable = (XTypeVariable) xType;
+            return xTypeVariable.getName();
+        } else if (xType instanceof XParameterizedType) {
+            XParameterizedType xParameterizedType = (XParameterizedType) xType;
+            XClass rawType = xParameterizedType.getRawType();
+
+            List<XType> actualTypeArguments = xParameterizedType.getActualTypeArguments();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(rawType.getSimpleName());
+            sb.append("<");
+            for (int i = 0; i < actualTypeArguments.size(); i++) {
+                XType actualTypeArgument = actualTypeArguments.get(i);
+
+                sb.append(getDisplayName(actualTypeArgument));
+                if (i < actualTypeArguments.size() - 1)
                     sb.append(", ");
             }
             sb.append(">");
 
-            result.displayName = sb.toString();
-            return result;
-        } else if (WildcardType.class.isAssignableFrom(type.getClass())) {
-            WildcardType wildcardType = (WildcardType) type;
-            Type[] lowerBounds = wildcardType.getLowerBounds();
-            Type[] upperBounds = wildcardType.getUpperBounds();
-
-            lowerBounds = lowerBounds != null ? lowerBounds : new Type[0];
-            upperBounds = upperBounds != null ? upperBounds : new Type[0];
-
-            // extra checks won't hurt; the API doesn't look too friendly to strangers
-            if (lowerBounds.length > 1)
-                throw new IllegalArgumentException("Invalid WildcardType detected. Too many lower bounds.");
-            if (upperBounds.length > 1)
-                throw new IllegalArgumentException("Invalid WildcardType detected. Too many upper bounds.");
-
+            return sb.toString();
+        } else if (xType instanceof XWildcardType) {
             // C# doesn't have a similar feature; will default to Object
-            CsType result = new CsType();
-            result.displayName = "IJavaObject";
-            return result;
-        } else if (GenericArrayType.class.isAssignableFrom(type.getClass())) {
-            GenericArrayType genericArrayType = (GenericArrayType) type;
-            Type genericComponentType = genericArrayType.getGenericComponentType();
-            CsType genericComponentCsType = getCsType(genericComponentType);
+            return "IJavaObject";
+        } else if (xType instanceof XGenericArrayType) {
+            XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;
+            XType genericComponentType = xGenericArrayType.getGenericComponentType();
 
-            CsType result = new CsType();
-            result.displayName = "ObjectArray<" + genericComponentCsType.displayName + ">";
-            result.namespacesUsed.addAll(genericComponentCsType.namespacesUsed);
-            result.namespacesUsed.add("jvm4csharp.ArrayUtils");
-            return result;
+            return "ObjectArray<" + getDisplayName(genericComponentType) + ">";
         }
 
-        throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", type));
+        throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", xType));
     }
 
-    public static String getCsClassName(Class clazz) {
-        String result = clazz.getSimpleName();
+    public static String getSimpleClassName(XClass xClass) {
+        String result = xClass.getSimpleName();
 
-        Class declaringClass = clazz.getDeclaringClass();
+        XClass declaringClass = xClass.getDeclaringClass();
         while (declaringClass != null) {
             result = declaringClass.getSimpleName() + "_" + result;
             declaringClass = declaringClass.getDeclaringClass();
@@ -161,8 +140,11 @@ public final class CsType {
         return CsTemplateHelper.escapeCsKeyword(result);
     }
 
-    public static String getCsNamespace(Class clazz) {
-        String packageName = clazz.getPackage().getName();
+    public static String getNamespace(XClass xClass) {
+        return getNamespace(xClass.getPackageName());
+    }
+
+    public static String getNamespace(String packageName) {
         String[] splits = packageName.split("\\.");
 
         StringBuilder sb = new StringBuilder();

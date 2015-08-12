@@ -1,52 +1,45 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClass;
+import com.jvm4csharp.generator.reflectx.XConstructor;
+import com.jvm4csharp.generator.reflectx.XType;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Type;
+import java.util.List;
 
 public class CsConstructorTemplate implements ICsTemplate {
-    private final Constructor _constructor;
-    private final ClassDetails _declaringClassDetails;
-    private final CsType[] _parametersCsTypes;
+    private final XConstructor _constructor;
 
-    public CsConstructorTemplate(Constructor constructor, ClassDetails declaringClassDetails){
+    public CsConstructorTemplate(XConstructor constructor){
         _constructor = constructor;
-        _declaringClassDetails = declaringClassDetails;
-
-        Type[] parameterTypes = constructor.getGenericParameterTypes();
-        _parametersCsTypes = new CsType[parameterTypes.length];
-        for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsType.getCsType(parameterTypes[i]);
-        }
     }
 
     @Override
     public GenerationResult generate() {
-        String internalSignature = ReflectionHelper.getInternalSignature(_constructor);
-        String[] csParameterNames = CsTemplateHelper.getCsParameterNames(_constructor);
+        String internalSignature = _constructor.getInternalSignature();
+        List<XType> parameterTypes = _constructor.getParameterTypes();
+        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(_constructor);
+        XClass declaringClass = _constructor.getDeclaringClass();
 
         GenerationResult result = new GenerationResult();
 
         // signature
         result.append("public");
         result.append(TemplateHelper.SPACE);
-        result.append(CsType.getCsClassName(_declaringClassDetails.Class));
+        result.append(CsType.getSimpleClassName(declaringClass));
 
         result.append('(');
-        for (int i = 0; i < csParameterNames.length; i++) {
-            result.append(_parametersCsTypes[i].displayName);
+        for (int i = 0; i < parameterNames.length; i++) {
+            result.append(CsType.getDisplayName(parameterTypes.get(i)));
             result.append(TemplateHelper.SPACE);
-            result.append(csParameterNames[i]);
+            result.append(parameterNames[i]);
 
-            if (i < csParameterNames.length - 1)
+            if (i < parameterNames.length - 1)
                 result.append(", ");
         }
         result.append(")");
-        if (_declaringClassDetails.Class != Object.class && _declaringClassDetails.Class != Throwable.class)
+        if (!declaringClass.isClass(Object.class) && !declaringClass.isClass(Throwable.class))
             result.append(" : base(JavaVoid.Void)");
 
         result.newLine();
@@ -58,7 +51,7 @@ public class CsConstructorTemplate implements ICsTemplate {
         result.append(internalSignature);
         result.append("\"");
 
-        for (String csParameterName : csParameterNames) {
+        for (String csParameterName : parameterNames) {
             result.append(", ");
             result.append(csParameterName);
         }
@@ -67,10 +60,5 @@ public class CsConstructorTemplate implements ICsTemplate {
         result.append(TemplateHelper.BLOCK_CLOSE);
 
         return result;
-    }
-
-    @Override
-    public CsType[] getReferencedCsTypes() {
-        return _parametersCsTypes;
     }
 }

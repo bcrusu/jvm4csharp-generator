@@ -1,7 +1,7 @@
 package com.jvm4csharp.generator;
 
-public interface IProxyGenerator {
-    boolean canGenerate(Class clazz);
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
 
-    GenerationResult generate(ClassDetails classDetails);
+public interface IProxyGenerator {
+    GenerationResult generate(XClassDefinition clazz);
 }

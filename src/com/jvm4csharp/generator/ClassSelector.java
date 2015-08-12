@@ -7,6 +7,7 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
 import java.lang.Class;
+import java.lang.reflect.Modifier;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -30,7 +31,8 @@ public class ClassSelector {
 
             try {
                 Class clazz = Class.forName(typeName);
-                result.add(clazz);
+                if (canGenerateClass(clazz))
+                    result.add(clazz);
             } catch (ClassNotFoundException e) {
                 System.out.format("Could not load class: %1s", typeName);
             }
@@ -58,5 +60,12 @@ public class ClassSelector {
                 return true;
 
         return false;
+    }
+
+    private boolean canGenerateClass(Class clazz) {
+        boolean isPublic = Modifier.isPublic(clazz.getModifiers());
+
+        return isPublic && !clazz.isPrimitive() && !clazz.isArray() &&
+                !clazz.isSynthetic() && !clazz.isLocalClass() && !clazz.isAnonymousClass();
     }
 }

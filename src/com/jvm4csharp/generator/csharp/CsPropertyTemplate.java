@@ -1,31 +1,21 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
-
-import java.lang.reflect.Field;
+import com.jvm4csharp.generator.reflectx.XField;
 
 public class CsPropertyTemplate implements ICsTemplate {
-    private final Field _field;
-    private final CsType _fieldCsType;
-    private ClassDetails _declaringClassDetails;
+    private final XField _field;
 
-    public CsPropertyTemplate(Field field, ClassDetails declaringClassDetails) {
+    public CsPropertyTemplate(XField field) {
         _field = field;
-        _fieldCsType = CsType.getCsType(_field.getGenericType());
-        _declaringClassDetails = declaringClassDetails;
     }
 
     @Override
     public GenerationResult generate() {
-        boolean isFinal = ReflectionHelper.isFinal(_field);
-        boolean isStatic = ReflectionHelper.isStatic(_field);
-
-        String fieldName = _field.getName();
-        String internalTypeName = ReflectionHelper.getInternalTypeName(_field.getType());
-        CsType declaringClassCsType = CsType.getCsType(_declaringClassDetails.Class);
+        String internalTypeName = _field.getInternalTypeName();
+        String declaringClassName = CsType.getSimpleClassName(_field.getDeclaringClass());
+        String fieldTypeDisplayName = CsType.getDisplayName(_field.getType());
 
         GenerationResult result = new GenerationResult();
 
@@ -34,20 +24,20 @@ public class CsPropertyTemplate implements ICsTemplate {
         result.append(internalTypeName);
         result.appendNewLine("\")]");
 
-        if (!_declaringClassDetails.Class.isInterface()) {
+        if (!_field.getDeclaringClass().isInterface()) {
             result.append("public ");
-            if (isStatic)
+            if (_field.isStatic())
                 result.append("static ");
         }
 
-        result.append(_fieldCsType.displayName);
+        result.append(fieldTypeDisplayName);
         result.append(TemplateHelper.SPACE);
-        result.append(CsTemplateHelper.escapeCsKeyword(fieldName));
+        result.append(CsTemplateHelper.escapeCsKeyword(_field.getName()));
 
 
-        if (_declaringClassDetails.Class.isInterface()) {
+        if (_field.getDeclaringClass().isInterface()) {
             result.append(" { get; ");
-            if (!isFinal)
+            if (!_field.isFinal())
                 result.append("set; ");
             result.append("}");
         } else {
@@ -57,40 +47,40 @@ public class CsPropertyTemplate implements ICsTemplate {
             // getter
             result.append(TemplateHelper.TAB);
             result.append("get { return Get");
-            if (isStatic)
+            if (_field.isStatic())
                 result.append("Static");
             result.append("Field<");
-            result.append(_fieldCsType.displayName);
+            result.append(fieldTypeDisplayName);
             result.append(">(");
 
-            if (isStatic) {
+            if (_field.isStatic()) {
                 result.append("typeof(");
-                result.append(declaringClassCsType.displayName);
+                result.append(declaringClassName);
                 result.append("), ");
             }
 
             result.append("\"");
-            result.append(fieldName);
+            result.append(_field.getName());
             result.append("\", \"");
             result.append(internalTypeName);
             result.append("\"); }");
 
             // setter
-            if (!isFinal) {
+            if (!_field.isFinal()) {
                 result.newLine();
                 result.append(TemplateHelper.TAB);
 
                 result.append("set { Set");
-                if (isStatic)
+                if (_field.isStatic())
                     result.append("Static");
                 result.append("Field(");
-                if (isStatic) {
+                if (_field.isStatic()) {
                     result.append("typeof(");
-                    result.append(declaringClassCsType.displayName);
+                    result.append(declaringClassName);
                     result.append("), ");
                 }
                 result.append("\"");
-                result.append(fieldName);
+                result.append(_field.getName());
                 result.append("\", \"");
                 result.append(internalTypeName);
                 result.append("\", value); }");
@@ -100,12 +90,6 @@ public class CsPropertyTemplate implements ICsTemplate {
             result.append(TemplateHelper.BLOCK_CLOSE);
         }
 
-        return result;
-    }
-
-    public CsType[] getReferencedCsTypes() {
-        CsType[] result = new CsType[1];
-        result[0] = _fieldCsType;
         return result;
     }
 }

@@ -1,36 +1,17 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
+import com.jvm4csharp.generator.reflectx.XField;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class CsInterfaceCompanionTemplate implements ICsTemplate {
-    private final ClassDetails _classDetails;
-    private final CsType _classCsType;
-    private final List<CsPropertyTemplate> _fields;
-    private final List<CsMethodTemplate> _methods;
+    private final XClassDefinition _classDefinition;
 
-    public CsInterfaceCompanionTemplate(ClassDetails classDetails) {
-        _classDetails = classDetails;
-        _classCsType = CsType.getCsType(classDetails.Class);
-
-        _fields = classDetails.getFields()
-                .stream()
-                .filter(ReflectionHelper::isStatic)
-                .map(x -> new CsPropertyTemplate(x, classDetails))
-                .collect(Collectors.toList());
-
-        _methods = classDetails.getMethods()
-                .stream()
-                .filter(x -> ReflectionHelper.isStatic(x) || x.isDefault())
-                .map(x -> new CsMethodTemplate(x, classDetails))
-                .collect(Collectors.toList());
+    public CsInterfaceCompanionTemplate(XClassDefinition classDefinition) {
+        _classDefinition = classDefinition;
     }
 
     @Override
@@ -38,43 +19,25 @@ public class CsInterfaceCompanionTemplate implements ICsTemplate {
         GenerationResult result = new GenerationResult();
 
         result.append("public static class ");
-        result.append(_classCsType.displayName);
+        result.append(CsType.getDisplayName(_classDefinition));
         result.append("_");
 
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        LinkedList<GenerationResult> generationResults = new LinkedList<>();
+        CsTemplateHelper.renderFields(result, _classDefinition,
+                _classDefinition.getFields()
+                        .stream()
+                        .filter(XField::isStatic)
+                        .collect(Collectors.toList()));
 
-        for (ICsTemplate template : _fields)
-            generationResults.add(template.generate());
-
-        for (ICsTemplate template : _methods)
-            generationResults.add(template.generate());
-
-        for (int i = 0; i < generationResults.size(); i++) {
-            generationResults.get(i).renderTo(result, 1);
-
-            if (i < generationResults.size() - 1)
-                result.newLine();
-        }
+        CsTemplateHelper.renderMethods(result, _classDefinition,
+                _classDefinition.getDeclaredMethods()
+                        .stream()
+                        .filter(x -> x.isStatic() || x.isDefault())
+                        .collect(Collectors.toList()));
 
         result.append(TemplateHelper.BLOCK_CLOSE);
 
         return result;
-    }
-
-    @Override
-    public CsType[] getReferencedCsTypes() {
-        LinkedList<CsType> result = new LinkedList<>();
-
-        result.add(_classCsType);
-
-        for (ICsTemplate template : _fields)
-            result.addAll(Arrays.asList(template.getReferencedCsTypes()));
-
-        for (ICsTemplate template : _methods)
-            result.addAll(Arrays.asList(template.getReferencedCsTypes()));
-
-        return result.toArray(new CsType[result.size()]);
     }
 }

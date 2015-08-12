@@ -1,59 +1,42 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.ClassDetails;
-import com.jvm4csharp.generator.ReflectionHelper;
+import com.jvm4csharp.generator.reflectx.XClass;
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
+import com.jvm4csharp.generator.reflectx.XField;
 
 public class CsTemplateFactory {
-    public static boolean canCreateTemplate(Class clazz) {
-        if (!ReflectionHelper.isPublic(clazz))
-            return false;
+    public static ICsTemplate createTemplate(XClassDefinition classDefinition) {
+        XClass xClass = classDefinition.getXClass();
 
-        // cannot create proxies for primitive types nor for arrays
-        if (clazz.isPrimitive() || clazz.isArray())
-            return false;
-
-        // anonymous/compiler-generated classes will be ignored
-        if (clazz.isSynthetic() || clazz.isLocalClass() || clazz.isAnonymousClass())
-            return false;
-
-        return true;
-    }
-
-    public static ICsTemplate createTemplate(ClassDetails classDetails) {
-        Class clazz = classDetails.Class;
-
-        if (clazz.isEnum())
-            return new CsEnumTemplate(classDetails);
-        else if (clazz.isInterface()) {
-            return new CsInterfaceTemplate(classDetails);
+        if (xClass.isEnum())
+            return new CsEnumTemplate(classDefinition);
+        else if (xClass.isInterface()) {
+            return new CsInterfaceTemplate(classDefinition);
 
             //if (interfaceNeedsCompanionClass(clazz))
             //TODO:
         }
 
-        return new CsClassTemplate(classDetails);
+        return new CsClassTemplate(classDefinition);
     }
 
-    private static boolean interfaceNeedsCompanionClass(ClassDetails classDetails) {
-        if (!classDetails.Class.isInterface())
+    private static boolean interfaceNeedsCompanionClass(XClassDefinition classDefinition) {
+        XClass xClass = classDefinition.getXClass();
+
+        if (!xClass.isInterface())
             return false;
 
-        long staticFieldsCount = classDetails.getFields()
+        boolean hasStaticFields = classDefinition.getFields()
                 .stream()
-                .filter(ReflectionHelper::isStatic)
-                .count();
+                .anyMatch(XField::isStatic);
 
-        if (staticFieldsCount > 0)
+        if (hasStaticFields)
             return true;
 
-        long staticAndDefaultMethodCount = classDetails.getMethods()
+        boolean hasStaticOrDefaultMethods = classDefinition.getDeclaredMethods()
                 .stream()
-                .filter(x -> ReflectionHelper.isStatic(x) || x.isDefault())
-                .count();
+                .anyMatch(x -> x.isStatic() || x.isDefault());
 
-        if (staticAndDefaultMethodCount > 0)
-            return true;
-
-        return false;
+        return hasStaticOrDefaultMethods;
     }
 }

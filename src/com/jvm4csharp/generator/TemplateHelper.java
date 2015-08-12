@@ -1,11 +1,8 @@
 package com.jvm4csharp.generator;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 
 public final class TemplateHelper {
-    private static String _newLine;
-
     public static final String SPACE;
     public static final char TAB;
     public static final String NEWLINE;

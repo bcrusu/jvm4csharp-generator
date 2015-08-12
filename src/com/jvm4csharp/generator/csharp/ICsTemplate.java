@@ -4,6 +4,4 @@ import com.jvm4csharp.generator.GenerationResult;
 
 public interface ICsTemplate {
     GenerationResult generate();
-
-    CsType[] getReferencedCsTypes();
 }

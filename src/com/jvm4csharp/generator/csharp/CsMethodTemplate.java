@@ -1,43 +1,27 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XMethod;
+import com.jvm4csharp.generator.reflectx.XType;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 
-//TODO: var args
+//TODO: use C# 'params' keyword for var args
 public class CsMethodTemplate implements ICsTemplate {
-    private final Method _method;
-    private final ClassDetails _declaringClassDetails;
-    private final CsType _returnCsType;
-    private final CsType[] _parametersCsTypes;
+    private final XMethod _method;
 
-    public CsMethodTemplate(Method method, ClassDetails declaringClassDetails) {
+    public CsMethodTemplate(XMethod method) {
         _method = method;
-        _declaringClassDetails = declaringClassDetails;
-        _returnCsType = CsType.getCsType(method.getGenericReturnType());
-
-        Type[] parameterTypes = method.getGenericParameterTypes();
-        _parametersCsTypes = new CsType[parameterTypes.length];
-        for (int i = 0; i < parameterTypes.length; i++) {
-            _parametersCsTypes[i] = CsType.getCsType(parameterTypes[i]);
-        }
     }
 
     @Override
     public GenerationResult generate() {
-        boolean isStatic = ReflectionHelper.isStatic(_method);
-
-        String methodName = _method.getName();
-        String internalSignature = ReflectionHelper.getInternalSignature(_method);
-        CsType declaringClassCsType = CsType.getCsType(_declaringClassDetails.Class);
-        Class returnType = _method.getReturnType();
-        String[] csParameterNames = CsTemplateHelper.getCsParameterNames(_method);
+        String internalSignature = _method.getInternalSignature();
+        String returnTypeDisplayName = CsType.getDisplayName(_method.getReturnType());
+        List<XType> parameterTypes = _method.getParameterTypes();
+        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(_method);
+        String declaringClassName = CsType.getSimpleClassName(_method.getDeclaringClass());
 
         GenerationResult result = new GenerationResult();
 
@@ -46,63 +30,63 @@ public class CsMethodTemplate implements ICsTemplate {
         result.append(internalSignature);
         result.appendNewLine("\")]");
 
-        if (!_declaringClassDetails.Class.isInterface())
+        if (!_method.getDeclaringClass().isInterface())
             result.append("public ");
-        if (isStatic)
+        if (_method.isStatic())
             result.append("static ");
 
-        result.append(_returnCsType.displayName);
+        result.append(returnTypeDisplayName);
         result.append(TemplateHelper.SPACE);
-        result.append(CsTemplateHelper.escapeCsKeyword(methodName));
+        result.append(CsTemplateHelper.escapeCsKeyword(_method.getName()));
 
         CsTemplateHelper.renderTypeParameters(result, _method);
 
         result.append('(');
-        for (int i = 0; i < csParameterNames.length; i++) {
-            result.append(_parametersCsTypes[i].displayName);
+        for (int i = 0; i < parameterNames.length; i++) {
+            result.append(CsType.getDisplayName(parameterTypes.get(i)));
             result.append(TemplateHelper.SPACE);
-            result.append(csParameterNames[i]);
+            result.append(parameterNames[i]);
 
-            if (i < csParameterNames.length - 1)
+            if (i < parameterNames.length - 1)
                 result.append(", ");
         }
         result.append(')');
 
         // body
-        if (_declaringClassDetails.Class.isInterface()) {
+        if (_method.getDeclaringClass().isInterface()) {
             result.append(";");
         } else {
             result.newLine();
             result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
             result.append(TemplateHelper.TAB);
-            if (returnType != Void.TYPE)
+            if (!_method.isVoidReturnType())
                 result.append("return ");
 
             result.append("Call");
-            if (isStatic)
+            if (_method.isStatic())
                 result.append("Static");
             result.append("Method");
 
-            if (returnType != Void.TYPE) {
+            if (!_method.isVoidReturnType()) {
                 result.append("<");
-                result.append(_returnCsType.displayName);
+                result.append(returnTypeDisplayName);
                 result.append(">");
             }
 
             result.append('(');
-            if (isStatic) {
+            if (_method.isStatic()) {
                 result.append("typeof(");
-                result.append(declaringClassCsType.displayName);
+                result.append(declaringClassName);
                 result.append("), ");
             }
             result.append("\"");
-            result.append(methodName);
+            result.append(_method.getName());
             result.append("\", \"");
             result.append(internalSignature);
             result.append("\"");
 
-            for (String csParameterName : csParameterNames) {
+            for (String csParameterName : parameterNames) {
                 result.append(", ");
                 result.append(csParameterName);
             }
@@ -112,13 +96,5 @@ public class CsMethodTemplate implements ICsTemplate {
         }
 
         return result;
-    }
-
-    @Override
-    public CsType[] getReferencedCsTypes() {
-        ArrayList<CsType> result = new ArrayList<>();
-        result.add(_returnCsType);
-        result.addAll(Arrays.asList(_parametersCsTypes));
-        return result.toArray(new CsType[result.size()]);
     }
 }

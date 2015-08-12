@@ -1,6 +1,10 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.*;
+import com.jvm4csharp.generator.GenerationResult;
+import com.jvm4csharp.generator.GenerationResultLocation;
+import com.jvm4csharp.generator.IProxyGenerator;
+import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
 
 import java.io.File;
 import java.util.HashSet;
@@ -14,57 +18,54 @@ public class CsProxyGenerator implements IProxyGenerator {
     }
 
     @Override
-    public GenerationResult generate(ClassDetails classDetails) {
-        ICsTemplate template = CsTemplateFactory.createTemplate(classDetails);
-        GenerationResultLocation location = getLocation(classDetails.Class);
+    public GenerationResult generate(XClassDefinition classDefinition) {
+        ICsTemplate template = CsTemplateFactory.createTemplate(classDefinition);
+        GenerationResultLocation location = getLocation(classDefinition);
 
         //TODO: generate companion templates
 
-        return generateTemplate(classDetails.Class, template, location);
+        return generateTemplate(classDefinition, template, location);
     }
 
-    @Override
-    public boolean canGenerate(Class clazz) {
-        return CsTemplateFactory.canCreateTemplate(clazz);
-    }
+    private String[] getNamespacesUsed(XClassDefinition clazz, String currentNamespace) {
+        Set<String> referencedPackageNames = clazz.getReferencedPackageNames();
 
-    private String[] getNamespacesUsed(CsType[] referencedCsTypes, String currentNamespace) {
         Set<String> set = new HashSet<>();
         set.add("jvm4csharp");
+        set.add("jvm4csharp.ArrayUtils");
 
-        for (CsType csType : referencedCsTypes) {
-            for (String namespaceUsed : csType.namespacesUsed) {
-                if (_namespacePrefix != null && !namespaceUsed.startsWith(_namespacePrefix))
-                    namespaceUsed = _namespacePrefix + "." + namespaceUsed;
+        for (String referencedPackageName : referencedPackageNames) {
+            String namespace = CsType.getNamespace(referencedPackageName);
 
-                set.add(namespaceUsed);
-            }
+            if (_namespacePrefix != null && !namespace.startsWith(_namespacePrefix))
+                namespace = _namespacePrefix + "." + namespace;
+
+            set.add(namespace);
         }
 
         return set.stream()
                 .filter(x -> x.compareTo(currentNamespace) != 0)
                 .filter(x -> !currentNamespace.startsWith(x))
                 .sorted()
-                .toArray(x -> new String[x]);
+                .toArray(i -> new String[i]);
     }
 
-    private static GenerationResultLocation getLocation(Class clazz){
-        String packageName = clazz.getPackage().getName();
+    private static GenerationResultLocation getLocation(XClassDefinition classDefinition) {
+        String packageName = classDefinition.getXClass().getPackageName();
 
-        String name = CsType.getCsClassName(clazz) + ".gen.cs";
+        String name = CsType.getSimpleClassName(classDefinition.getXClass()) + ".gen.cs";
         String path = packageName.replace(".", File.separator);
 
         GenerationResultLocation result = new GenerationResultLocation(path, name);
         return result;
     }
 
-    private GenerationResult generateTemplate(Class clazz, ICsTemplate template, GenerationResultLocation location) {
-        String currentNamespace = CsType.getCsNamespace(clazz);
+    private GenerationResult generateTemplate(XClassDefinition classDefinition, ICsTemplate template, GenerationResultLocation location) {
+        String currentNamespace = CsType.getNamespace(classDefinition.getXClass());
         if (_namespacePrefix != null)
             currentNamespace = _namespacePrefix + "." + currentNamespace;
 
-        CsType[] csTypes = template.getReferencedCsTypes();
-        String[] namespacesUsed = getNamespacesUsed(csTypes, currentNamespace);
+        String[] namespacesUsed = getNamespacesUsed(classDefinition, currentNamespace);
 
         GenerationResult result = new GenerationResult(location);
 

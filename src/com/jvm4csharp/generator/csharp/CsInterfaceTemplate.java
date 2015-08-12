@@ -1,46 +1,21 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.ClassDetails;
 import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
 
-import java.util.*;
 import java.util.stream.Collectors;
 
 public class CsInterfaceTemplate implements ICsTemplate {
-    private final ClassDetails _classDetails;
-    private final CsType _classCsType;
-    private final List<CsType> _implementedInterfacesCsTypes;
-    private final List<CsPropertyTemplate> _fields;
-    private final List<CsMethodTemplate> _methods;
+    private final XClassDefinition _classDefinition;
 
-    public CsInterfaceTemplate(ClassDetails classDetails) {
-        _classDetails = classDetails;
-        _classCsType = CsType.getCsType(classDetails.Class);
-
-        _implementedInterfacesCsTypes = classDetails.getImplementedInterfaces()
-                .stream()
-                .map(CsType::getCsType)
-                .collect(Collectors.toList());
-
-        _fields = classDetails.getFields()
-                .stream()
-                .filter(x -> !ReflectionHelper.isStatic(x))
-                .map(x -> new CsPropertyTemplate(x, classDetails))
-                .collect(Collectors.toList());
-
-        _methods = classDetails.getMethods()
-                .stream()
-                .filter(x -> !ReflectionHelper.isStatic(x))
-                .filter(x -> !x.isDefault())
-                .map(x -> new CsMethodTemplate(x, classDetails))
-                .collect(Collectors.toList());
+    public CsInterfaceTemplate(XClassDefinition classDefinition) {
+        _classDefinition = classDefinition;
     }
 
     @Override
     public GenerationResult generate() {
-        String internalTypeName = ReflectionHelper.getInternalTypeName(_classDetails.Class);
+        String internalTypeName = _classDefinition.getXClass().getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
@@ -49,47 +24,22 @@ public class CsInterfaceTemplate implements ICsTemplate {
         result.appendNewLine("\")]");
 
         result.append("public interface ");
-        result.append(_classCsType.displayName);
+        result.append(CsType.getDisplayName(_classDefinition));
 
-        CsTemplateHelper.renderTypeParameters(result, _classDetails.Class);
-        CsTemplateHelper.renderImplementedInterfaces(result, _classDetails.Class, _implementedInterfacesCsTypes);
+        CsTemplateHelper.renderTypeParameters(result, _classDefinition);
+        CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        LinkedList<GenerationResult> generationResults = new LinkedList<>();
-
-        for (ICsTemplate template : _fields)
-            generationResults.add(template.generate());
-
-        for (ICsTemplate template : _methods)
-            generationResults.add(template.generate());
-
-        for (int i = 0; i < generationResults.size(); i++) {
-            generationResults.get(i).renderTo(result, 1);
-
-            if (i < generationResults.size() - 1)
-                result.newLine();
-        }
+        CsTemplateHelper.renderMethods(result, _classDefinition,
+                _classDefinition.getDeclaredMethods()
+                        .stream()
+                        .filter(x -> !x.isStatic() && !x.isDefault())
+                        .collect(Collectors.toList()));
 
         result.append(TemplateHelper.BLOCK_CLOSE);
 
         return result;
-    }
-
-    @Override
-    public CsType[] getReferencedCsTypes() {
-        LinkedList<CsType> result = new LinkedList<>();
-
-        result.add(_classCsType);
-        result.addAll(_implementedInterfacesCsTypes);
-
-        for (ICsTemplate template : _fields)
-            result.addAll(Arrays.asList(template.getReferencedCsTypes()));
-
-        for (ICsTemplate template : _methods)
-            result.addAll(Arrays.asList(template.getReferencedCsTypes()));
-
-        return result.toArray(new CsType[result.size()]);
     }
 }

@@ -1,32 +1,24 @@
 package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.GenerationResult;
-import com.jvm4csharp.generator.ReflectionHelper;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.*;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.GenericDeclaration;
-import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class CsTemplateHelper {
     private static Set<String> CsKeywords = new HashSet<>();
 
-    public static void renderTypeParameters(GenerationResult result, GenericDeclaration genericDeclaration) {
-        List<CsType> typeParameters = Arrays.asList(genericDeclaration.getTypeParameters())
-                .stream()
-                .map(CsType::getCsType)
-                .collect(Collectors.toList());
+    public static void renderTypeParameters(GenerationResult result, XGenericDeclaration genericDeclaration) {
+        List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
 
         if (typeParameters.size() > 0) {
             result.append("<");
             for (int i = 0; i < typeParameters.size(); i++) {
-                CsType typeParametersCsType = typeParameters.get(i);
-                result.append(typeParametersCsType.displayName);
+                result.append(CsType.getDisplayName(typeParameters.get(i)));
 
                 if (i < typeParameters.size() - 1)
                     result.append(", ");
@@ -35,18 +27,21 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderImplementedInterfaces(GenerationResult result, Class _class, List<CsType> implementedInterfaces) {
+    public static void renderImplementedInterfaces(GenerationResult result, XClassDefinition classDefinition) {
+        List<XClassDefinition> implementedInterfaces = classDefinition.getImplementedInterfaces();
+
+        if (classDefinition.getXClass().isInterface()) {
+            result.append(" : ");
+            if (implementedInterfaces.size() == 0)
+                result.append("IJavaObject");
+        }
+
         if (implementedInterfaces.size() > 0) {
-            if (_class.isInterface()) {
-                result.append(" : ");
-                if (implementedInterfaces.size() == 0)
-                    result.append("IJavaObject");
-            } else
+            if (!classDefinition.getXClass().isInterface())
                 result.append(", ");
 
             for (int i = 0; i < implementedInterfaces.size(); i++) {
-                CsType implementedInterfaceCsType = implementedInterfaces.get(i);
-                result.append(implementedInterfaceCsType.displayName);
+                result.append(CsType.getDisplayName(implementedInterfaces.get(i)));
 
                 if (i < implementedInterfaces.size() - 1)
                     result.append(", ");
@@ -54,68 +49,96 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderBaseClass(GenerationResult result, Class clazz, CsType superclassCsType) {
-        if (clazz == Object.class)
+    public static void renderBaseClass(GenerationResult result, XClassDefinition classDefinition) {
+        if (classDefinition.getXClass().isClass(Object.class))
             return;
 
         result.append(" : ");
 
-        if (clazz == Throwable.class) {
+        if (classDefinition.getXClass().isClass(Throwable.class)) {
             result.append("global::System.Exception");
             return;
         }
 
-        result.append(superclassCsType.displayName);
+        XClassDefinition superclass = classDefinition.getSuperclass();
+        result.append(CsType.getDisplayName(superclass));
     }
 
-    public static void renderConstructors(GenerationResult result, Class clazz, List<CsConstructorTemplate> constructors) {
-        boolean isFinal = ReflectionHelper.isFinal(clazz);
-        boolean isAbstract = ReflectionHelper.isAbstract(clazz);
-        String csClassName = CsType.getCsClassName(clazz);
+    public static void renderConstructors(GenerationResult result, XClassDefinition classDefinition) {
+        List<XConstructor> constructors = classDefinition.getConstructors();
+        String csClassName = CsType.getSimpleClassName(classDefinition.getXClass());
 
-        boolean addedProxyCtor = false;
-        if (!isFinal) {
-            if (clazz != Object.class && clazz != Throwable.class) {
+        if (!classDefinition.getXClass().isFinal()) {
+            if (!classDefinition.getXClass().isClass(Object.class) && !classDefinition.getXClass().isClass(Throwable.class)) {
                 result.append(TemplateHelper.TAB);
                 result.append("protected ");
                 result.append(csClassName);
-                result.append("(JavaVoid v) : base(v) {}");
-                addedProxyCtor = true;
+                result.appendNewLine("(JavaVoid v) : base(v) {}");
             }
         } else {
             if (constructors.size() == 0) {
                 result.append(TemplateHelper.TAB);
                 result.append("private ");
                 result.append(csClassName);
-                result.append("() : base(JavaVoid.Void) {}");
-                addedProxyCtor = true;
+                result.appendNewLine("() : base(JavaVoid.Void) {}");
             }
         }
 
-        if (!isAbstract) {
-            if (addedProxyCtor) {
-                result.newLine();
-                result.newLine();
-            }
-
+        if (!classDefinition.getXClass().isAbstract()) {
             for (int i = 0; i < constructors.size(); i++) {
-                ICsTemplate template = constructors.get(i);
+                result.newLine();
+                XConstructor constructor = constructors.get(i);
+                ICsTemplate template = new CsConstructorTemplate(constructor);
                 template.generate().renderTo(result, 1);
-
-                if (i < constructors.size() - 1)
-                    result.newLine();
             }
         }
     }
 
-    public static String[] getCsParameterNames(Executable executable) {
-        Parameter[] parameters = executable.getParameters();
-        String[] result = new String[parameters.length];
+    public static void renderMethods(GenerationResult result, XClassDefinition classDefinition, List<XMethod> methods) {
+//        for (int i = 0; i < methods.size(); i++) {
+//            XMethod method = methods.get(i);
+//            ICsTemplate template = new CsMethodTemplate(method);
+//            template.generate().renderTo(result, 1);
+//
+//            if (i < methods.size() - 1) {
+//                result.newLine();
+//            }
+//        }
+    }
 
-        for (int i = 0; i < parameters.length; i++) {
-            String parameterName = parameters[i].getName();
-            result[i] = CsTemplateHelper.escapeCsKeyword(parameterName);
+    //TODO: review
+    public static void renderMethods(GenerationResult result, XClassDefinition classDefinition) {
+        XClassDefinition superclass = classDefinition.getSuperclass();
+        List<XClassDefinition> superclassImplementedInterfaces = superclass.getImplementedInterfaces();
+
+        List<XClassDefinition> implementedInterfaces = classDefinition.getImplementedInterfaces();
+        List<XMethod> declaredMethods = classDefinition.getDeclaredMethods();
+
+
+
+    }
+
+    public static void renderFields(GenerationResult result, XClassDefinition classDefinition, List<XField> fields) {
+        for (int i = 0; i < fields.size(); i++) {
+            XField field = fields.get(i);
+            ICsTemplate template = new CsPropertyTemplate(field);
+            template.generate().renderTo(result, 1);
+
+            if (i < fields.size() - 1)
+                result.newLine();
         }
+    }
+
+    public static void renderFields(GenerationResult result, XClassDefinition classDefinition) {
+        renderFields(result, classDefinition, classDefinition.getFields());
+    }
+
+    public static String[] getEscapedParameterNames(XExecutable executable) {
+        List<String> names = executable.getParameterNames();
+        String[] result = new String[names.size()];
+
+        for (int i = 0; i < names.size(); i++)
+            result[i] = CsTemplateHelper.escapeCsKeyword(names.get(i));
 
         return result;
     }

@@ -2,6 +2,7 @@ package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
 import com.jvm4csharp.generator.reflectx.XMethod;
 import com.jvm4csharp.generator.reflectx.XType;
 
@@ -10,18 +11,23 @@ import java.util.List;
 //TODO: use C# 'params' keyword for var args
 public class CsMethodTemplate implements ICsTemplate {
     private final XMethod _method;
+    private final XClassDefinition _classDefinition;
+    private final boolean _isNew;
+    private final boolean _isExplicit;
 
-    public CsMethodTemplate(XMethod method) {
+    public CsMethodTemplate(XMethod method, XClassDefinition classDefinition, boolean isNew, boolean isExplicit) {
         _method = method;
+        _classDefinition = classDefinition;
+        _isNew = isNew;
+        _isExplicit = isExplicit;
     }
 
     @Override
     public GenerationResult generate() {
         String internalSignature = _method.getInternalSignature();
-        String returnTypeDisplayName = CsType.getDisplayName(_method.getReturnType());
+        String returnTypeDisplayName = CsType.renderType(_method.getReturnType());
         List<XType> parameterTypes = _method.getParameterTypes();
         String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(_method);
-        String declaringClassName = CsType.getSimpleClassName(_method.getDeclaringClass());
 
         GenerationResult result = new GenerationResult();
 
@@ -30,20 +36,26 @@ public class CsMethodTemplate implements ICsTemplate {
         result.append(internalSignature);
         result.appendNewLine("\")]");
 
-        if (!_method.getDeclaringClass().isInterface())
+        if (!_isExplicit && !_classDefinition.getXClass().isInterface())
             result.append("public ");
+        if (_isNew && !_isExplicit)
+            result.append("new ");
         if (_method.isStatic())
             result.append("static ");
 
         result.append(returnTypeDisplayName);
         result.append(TemplateHelper.SPACE);
+        if (_isExplicit) {
+            result.append(CsType.renderTypeDefinition(_method.getDeclaringClass()));
+            result.append(".");
+        }
         result.append(CsTemplateHelper.escapeCsKeyword(_method.getName()));
 
         CsTemplateHelper.renderTypeParameters(result, _method);
 
         result.append('(');
         for (int i = 0; i < parameterNames.length; i++) {
-            result.append(CsType.getDisplayName(parameterTypes.get(i)));
+            result.append(CsType.renderType(parameterTypes.get(i)));
             result.append(TemplateHelper.SPACE);
             result.append(parameterNames[i]);
 
@@ -52,8 +64,10 @@ public class CsMethodTemplate implements ICsTemplate {
         }
         result.append(')');
 
+        CsTemplateHelper.renderTypeParameterConstraints(result, _method);
+
         // body
-        if (_method.getDeclaringClass().isInterface()) {
+        if (_classDefinition.getXClass().isInterface()) {
             result.append(";");
         } else {
             result.newLine();
@@ -77,7 +91,7 @@ public class CsMethodTemplate implements ICsTemplate {
             result.append('(');
             if (_method.isStatic()) {
                 result.append("typeof(");
-                result.append(declaringClassName);
+                result.append(CsType.renderUnboundType(_classDefinition));
                 result.append("), ");
             }
             result.append("\"");

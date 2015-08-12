@@ -14,8 +14,7 @@ public class CsPropertyTemplate implements ICsTemplate {
     @Override
     public GenerationResult generate() {
         String internalTypeName = _field.getInternalTypeName();
-        String declaringClassName = CsType.getSimpleClassName(_field.getDeclaringClass());
-        String fieldTypeDisplayName = CsType.getDisplayName(_field.getType());
+        String fieldTypeDisplayName = CsType.renderType(_field.getType());
 
         GenerationResult result = new GenerationResult();
 
@@ -24,7 +23,7 @@ public class CsPropertyTemplate implements ICsTemplate {
         result.append(internalTypeName);
         result.appendNewLine("\")]");
 
-        if (!_field.getDeclaringClass().isInterface()) {
+        if (!_field.getDeclaringClass().getXClass().isInterface()) {
             result.append("public ");
             if (_field.isStatic())
                 result.append("static ");
@@ -35,7 +34,7 @@ public class CsPropertyTemplate implements ICsTemplate {
         result.append(CsTemplateHelper.escapeCsKeyword(_field.getName()));
 
 
-        if (_field.getDeclaringClass().isInterface()) {
+        if (_field.getDeclaringClass().getXClass().isInterface()) {
             result.append(" { get; ");
             if (!_field.isFinal())
                 result.append("set; ");
@@ -55,7 +54,7 @@ public class CsPropertyTemplate implements ICsTemplate {
 
             if (_field.isStatic()) {
                 result.append("typeof(");
-                result.append(declaringClassName);
+                result.append(CsType.renderUnboundType(_field.getDeclaringClass()));
                 result.append("), ");
             }
 
@@ -76,7 +75,7 @@ public class CsPropertyTemplate implements ICsTemplate {
                 result.append("Field(");
                 if (_field.isStatic()) {
                     result.append("typeof(");
-                    result.append(declaringClassName);
+                    result.append(CsType.renderUnboundType(_field.getDeclaringClass()));
                     result.append("), ");
                 }
                 result.append("\"");

@@ -7,27 +7,27 @@ import java.util.Set;
 
 public class XMethod extends XExecutable {
     private final Method _method;
-    private XEditableType _returnType;
+    private final XEditableType _returnType;
 
-    XMethod(XClass declaringClass, Method method) {
+    XMethod(XClassDefinition declaringClass, Method method) {
         super(declaringClass, method);
         _method = method;
+        _returnType = XTypeFactory.createEditableType(_method.getGenericReturnType());
     }
 
-    void replaceTypeVariable(GenericDeclaration genericDeclaration, String variableName, XType newType) {
-        if (isStatic())
-            return;
+    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
+        if (isStatic()) return;
 
-        getEditableReturnType().replaceTypeVariable(genericDeclaration, variableName, newType);
+        _returnType.replaceTypeVariable(variableOwner, variableName, newType);
 
         for (XEditableType type : getEditableParameterTypes())
-            type.replaceTypeVariable(genericDeclaration, variableName, newType);
+            type.replaceTypeVariable(variableOwner, variableName, newType);
     }
 
-    void renameCollidingTypeVariables(GenericDeclaration genericDeclaration) {
-        super.renameCollidingTypeVariables(genericDeclaration);
-        String methodName = getName();
-        getEditableReturnType().renameCollidingTypeVariables(genericDeclaration, methodName);
+    void renameCollidingTypeVariables(GenericDeclaration variableOwner) {
+        super.renameCollidingTypeVariables(variableOwner);
+        String suffix = getName();
+        _returnType.renameCollidingTypeVariables(variableOwner, suffix);
     }
 
     @Override
@@ -41,27 +41,27 @@ public class XMethod extends XExecutable {
         return _method.getName();
     }
 
-    public boolean isStatic(){
+    public boolean isStatic() {
         return XUtils.isStatic(_method);
     }
 
-    public boolean isFinal(){
+    public boolean isFinal() {
         return XUtils.isFinal(_method);
     }
 
-    public boolean isDefault(){
+    public boolean isDefault() {
         return _method.isDefault();
     }
 
-    public boolean isAbstract(){
+    public boolean isAbstract() {
         return XUtils.isAbstract(_method);
     }
 
     public XType getReturnType() {
-        return getEditableReturnType().getType();
+        return _returnType.getType();
     }
 
-    public boolean isVoidReturnType(){
+    public boolean isVoidReturnType() {
         return _method.getReturnType() == Void.TYPE;
     }
 
@@ -71,12 +71,6 @@ public class XMethod extends XExecutable {
         result.append(XUtils.getInternalSignature(_method));
         result.append(XUtils.getInternalTypeName(_method.getReturnType()));
         return result.toString();
-    }
-
-    private XEditableType getEditableReturnType() {
-        if (_returnType == null)
-            _returnType = XTypeFactory.createEditableType(_method.getGenericReturnType());
-        return _returnType;
     }
 
     @Override
@@ -99,30 +93,25 @@ public class XMethod extends XExecutable {
         return sb.toString();
     }
 
-    public XMethodCompareResult compareTo(XMethod other) {
-        if (!getName().equals(other.getName()))
-            return XMethodCompareResult.NotEqual;
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof XMethod))
+            return false;
+
+        XMethod other2 = (XMethod) other;
+        if (!getName().equals(other2.getName()))
+            return false;
 
         List<XType> thisParameterTypes = getParameterTypes();
-        List<XType> otherParameterTypes = other.getParameterTypes();
+        List<XType> otherParameterTypes = other2.getParameterTypes();
 
         if (thisParameterTypes.size() != otherParameterTypes.size())
-            return XMethodCompareResult.NotEqual;
+            return false;
 
         for (int i = 0; i < thisParameterTypes.size(); i++)
             if (thisParameterTypes.get(i).compareTo(otherParameterTypes.get(i)) != XTypeCompareResult.Equal)
-                return XMethodCompareResult.NotEqual;
+                return false;
 
-        XType thisReturnType = getReturnType();
-        XType otherReturnType = other.getReturnType();
-        XTypeCompareResult returnTypeCompareResult = thisReturnType.compareTo(otherReturnType);
-
-        if (returnTypeCompareResult == XTypeCompareResult.Equal)
-            return XMethodCompareResult.SameSignature_SameReturnType;
-
-        if (returnTypeCompareResult == XTypeCompareResult.MoreSpecific)
-            return XMethodCompareResult.SameSignature_MoreSpecificReturnType;
-
-        return XMethodCompareResult.SameSignature_DifferentReturnType;
+        return true;
     }
 }

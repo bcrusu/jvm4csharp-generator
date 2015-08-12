@@ -8,11 +8,22 @@ import java.util.stream.Collectors;
 
 public class XClass extends XType {
     private final Class _class;
-    private XClass _arrayComponentType;
-    private List<XTypeVariable> _typeParameters;
+    private final XClass _arrayComponentType;
+    private final List<XTypeVariable> _typeParameters;
 
     XClass(Class clazz) {
         _class = clazz;
+        _arrayComponentType = clazz.isArray() ? (XClass) XTypeFactory.createType(_class.getComponentType()) : null;
+        _typeParameters = Arrays.asList(_class.getTypeParameters())
+                .stream()
+                .map(XTypeVariable::new)
+                .collect(Collectors.toList());
+    }
+
+    private XClass(XClass toClone) {
+        _class = toClone._class;
+        _arrayComponentType = toClone._arrayComponentType;
+        _typeParameters = toClone._typeParameters;
     }
 
     @Override
@@ -42,6 +53,11 @@ public class XClass extends XType {
             return XTypeCompareResult.MoreSpecific;
 
         return XTypeCompareResult.NotEqual;
+    }
+
+    @Override
+    public XType clone() {
+        return new XClass(this);
     }
 
     @Override
@@ -94,8 +110,6 @@ public class XClass extends XType {
     }
 
     public XClass getArrayComponentType() {
-        if (_arrayComponentType == null && _class.isArray())
-            _arrayComponentType = (XClass) XTypeFactory.createType(_class.getComponentType());
         return _arrayComponentType;
     }
 
@@ -109,12 +123,6 @@ public class XClass extends XType {
     }
 
     public List<XTypeVariable> getTypeParameters() {
-        if (_typeParameters == null)
-            _typeParameters = Arrays.asList(_class.getTypeParameters())
-                    .stream()
-                    .map(XTypeVariable::new)
-                    .collect(Collectors.toList());
-
         return _typeParameters;
     }
 

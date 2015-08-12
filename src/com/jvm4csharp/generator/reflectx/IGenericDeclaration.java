@@ -2,6 +2,6 @@ package com.jvm4csharp.generator.reflectx;
 
 import java.util.List;
 
-public interface XGenericDeclaration {
+public interface IGenericDeclaration{
     List<XTypeVariable> getTypeParameters();
 }

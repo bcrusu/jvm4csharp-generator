@@ -19,12 +19,12 @@ public class CsInterfaceCompanionTemplate implements ICsTemplate {
         GenerationResult result = new GenerationResult();
 
         result.append("public static class ");
-        result.append(CsType.getDisplayName(_classDefinition));
+        result.append(CsType.renderSimpleTypeName(_classDefinition));
         result.append("_");
 
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        CsTemplateHelper.renderFields(result, _classDefinition,
+        CsTemplateHelper.renderFields(result,
                 _classDefinition.getFields()
                         .stream()
                         .filter(XField::isStatic)

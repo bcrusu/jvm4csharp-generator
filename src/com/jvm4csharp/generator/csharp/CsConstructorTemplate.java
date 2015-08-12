@@ -20,18 +20,18 @@ public class CsConstructorTemplate implements ICsTemplate {
         String internalSignature = _constructor.getInternalSignature();
         List<XType> parameterTypes = _constructor.getParameterTypes();
         String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(_constructor);
-        XClass declaringClass = _constructor.getDeclaringClass();
+        XClass declaringClass = _constructor.getDeclaringClass().getXClass();
 
         GenerationResult result = new GenerationResult();
 
         // signature
         result.append("public");
         result.append(TemplateHelper.SPACE);
-        result.append(CsType.getSimpleClassName(declaringClass));
+        result.append(CsType.renderSimpleTypeName(declaringClass));
 
         result.append('(');
         for (int i = 0; i < parameterNames.length; i++) {
-            result.append(CsType.getDisplayName(parameterTypes.get(i)));
+            result.append(CsType.renderType(parameterTypes.get(i)));
             result.append(TemplateHelper.SPACE);
             result.append(parameterNames[i]);
 

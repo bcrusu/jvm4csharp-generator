@@ -27,10 +27,11 @@ public class CsEnumTemplate implements ICsTemplate {
         else
             result.append(" sealed");
         result.append(" class ");
-        result.append(CsType.getDisplayName(_classDefinition));
+        result.append(CsType.renderTypeDefinition(_classDefinition));
 
         CsTemplateHelper.renderBaseClass(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
+        CsTemplateHelper.renderTypeParameterConstraints(result, _classDefinition);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

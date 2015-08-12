@@ -1,6 +1,5 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Parameter;
@@ -10,27 +9,25 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public abstract class XExecutable implements XGenericDeclaration {
-    private final XClass _declaringClass;
+public abstract class XExecutable implements IGenericDeclaration {
+    private final XClassDefinition _declaringClass;
     private final Executable _executable;
     private List<XEditableType> _parameterTypes;
     private List<XEditableType> _typeParameters;
 
-    XExecutable(XClass declaringClass, Executable executable) {
+    XExecutable(XClassDefinition declaringClass, Executable executable) {
         _declaringClass = declaringClass;
         _executable = executable;
     }
 
-    void renameCollidingTypeVariables(GenericDeclaration genericDeclaration) {
-        String ownerName = _executable.getName();
-        if (_executable instanceof Constructor)
-            ownerName = _declaringClass.getSimpleName();
+    void renameCollidingTypeVariables(GenericDeclaration variableOwner) {
+        String suffix = getName();
 
         for (XEditableType item : getEditableParameterTypes())
-            item.renameCollidingTypeVariables(genericDeclaration, ownerName);
+            item.renameCollidingTypeVariables(variableOwner, suffix);
 
         for (XEditableType item : getEditableTypeParameters())
-            item.renameCollidingTypeVariables(genericDeclaration, ownerName);
+            item.renameCollidingTypeVariables(variableOwner, suffix);
     }
 
     public Set<String> getReferencedPackageNames() {
@@ -56,10 +53,6 @@ public abstract class XExecutable implements XGenericDeclaration {
                 .collect(Collectors.toList());
     }
 
-    public String getName(){
-        return getDeclaringClass().getSimpleName();
-    }
-
     @Override
     public List<XTypeVariable> getTypeParameters() {
         return getEditableTypeParameters()
@@ -69,11 +62,13 @@ public abstract class XExecutable implements XGenericDeclaration {
                 .collect(Collectors.toList());
     }
 
-    public XClass getDeclaringClass() {
+    public abstract String getInternalSignature();
+
+    public abstract String getName();
+
+    public XClassDefinition getDeclaringClass() {
         return _declaringClass;
     }
-
-    public abstract String getInternalSignature();
 
     protected List<XEditableType> getEditableParameterTypes() {
         if (_parameterTypes == null)

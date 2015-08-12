@@ -5,16 +5,31 @@ import com.jvm4csharp.generator.reflectx.*;
 import java.util.List;
 
 public class CsType {
-    public static String getDisplayName(XClassDefinition xClassDefinition) {
+    public static String renderUnboundType(XClassDefinition classDefinition) {
         StringBuilder sb = new StringBuilder();
-        sb.append(getSimpleClassName(xClassDefinition.getXClass()));
+        sb.append(renderSimpleTypeName(classDefinition));
 
-        List<XType> actualTypeArguments = xClassDefinition.getActualTypeArguments();
+        int typeParametersCount = classDefinition.getTypeParameters().size();
+        if (typeParametersCount > 0) {
+            sb.append("<");
+            for (int i = 0; i < typeParametersCount - 1; i++)
+                sb.append(",");
+            sb.append(">");
+        }
+
+        return sb.toString();
+    }
+
+    public static String renderTypeDefinition(XClassDefinition classDefinition) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(renderSimpleTypeName(classDefinition));
+
+        List<XType> actualTypeArguments = classDefinition.getActualTypeArguments();
         if (actualTypeArguments.size() > 0) {
             sb.append("<");
             for (int i = 0; i < actualTypeArguments.size(); i++) {
                 XType actualTypeArgument = actualTypeArguments.get(i);
-                sb.append(getDisplayName(actualTypeArgument));
+                sb.append(renderType(actualTypeArgument));
                 if (i < actualTypeArguments.size() - 1)
                     sb.append(", ");
             }
@@ -24,7 +39,7 @@ public class CsType {
         return sb.toString();
     }
 
-    public static String getDisplayName(XType xType) {
+    public static String renderType(XType xType) {
         if (xType instanceof XClass) {
             XClass xClass = (XClass) xType;
 
@@ -73,11 +88,11 @@ public class CsType {
                 else if (elementType.isClass(Double.TYPE))
                     return "DoubleArray";
                 else
-                    return "ObjectArray<" + getDisplayName(elementType) + ">";
+                    return "ObjectArray<" + renderType(elementType) + ">";
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append(getSimpleClassName(xClass));
+            sb.append(renderSimpleTypeName(xClass));
 
             List<XTypeVariable> typeParameters = xClass.getTypeParameters();
             if (typeParameters.size() > 0) {
@@ -93,22 +108,19 @@ public class CsType {
 
             return sb.toString();
         } else if (xType instanceof XTypeVariable) {
-            //TODO: handle bounds - C# 'where' type param constraints
             XTypeVariable xTypeVariable = (XTypeVariable) xType;
             return xTypeVariable.getName();
         } else if (xType instanceof XParameterizedType) {
             XParameterizedType xParameterizedType = (XParameterizedType) xType;
-            XClass rawType = xParameterizedType.getRawType();
-
             List<XType> actualTypeArguments = xParameterizedType.getActualTypeArguments();
 
             StringBuilder sb = new StringBuilder();
-            sb.append(rawType.getSimpleName());
+            sb.append(renderSimpleTypeName(xParameterizedType.getRawType()));
             sb.append("<");
             for (int i = 0; i < actualTypeArguments.size(); i++) {
                 XType actualTypeArgument = actualTypeArguments.get(i);
 
-                sb.append(getDisplayName(actualTypeArgument));
+                sb.append(renderType(actualTypeArgument));
                 if (i < actualTypeArguments.size() - 1)
                     sb.append(", ");
             }
@@ -122,13 +134,16 @@ public class CsType {
             XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;
             XType genericComponentType = xGenericArrayType.getGenericComponentType();
 
-            return "ObjectArray<" + getDisplayName(genericComponentType) + ">";
+            return "ObjectArray<" + renderType(genericComponentType) + ">";
         }
 
         throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", xType));
     }
 
-    public static String getSimpleClassName(XClass xClass) {
+    public static String renderSimpleTypeName(XClass xClass) {
+        if (xClass.isClass(Object.class))
+            return "IJavaObject";
+
         String result = xClass.getSimpleName();
 
         XClass declaringClass = xClass.getDeclaringClass();
@@ -140,11 +155,15 @@ public class CsType {
         return CsTemplateHelper.escapeCsKeyword(result);
     }
 
-    public static String getNamespace(XClass xClass) {
-        return getNamespace(xClass.getPackageName());
+    public static String renderSimpleTypeName(XClassDefinition classDefinition) {
+        return renderSimpleTypeName(classDefinition.getXClass());
     }
 
-    public static String getNamespace(String packageName) {
+    public static String renderNamespace(XClass xClass) {
+        return renderNamespace(xClass.getPackageName());
+    }
+
+    public static String renderNamespace(String packageName) {
         String[] splits = packageName.split("\\.");
 
         StringBuilder sb = new StringBuilder();

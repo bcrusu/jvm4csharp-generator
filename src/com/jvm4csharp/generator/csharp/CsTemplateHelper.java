@@ -4,21 +4,18 @@ import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
 import com.jvm4csharp.generator.reflectx.*;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class CsTemplateHelper {
     private static Set<String> CsKeywords = new HashSet<>();
 
-    public static void renderTypeParameters(GenerationResult result, XGenericDeclaration genericDeclaration) {
+    public static void renderTypeParameters(GenerationResult result, IGenericDeclaration genericDeclaration) {
         List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
 
         if (typeParameters.size() > 0) {
             result.append("<");
             for (int i = 0; i < typeParameters.size(); i++) {
-                result.append(CsType.getDisplayName(typeParameters.get(i)));
+                result.append(CsType.renderType(typeParameters.get(i)));
 
                 if (i < typeParameters.size() - 1)
                     result.append(", ");
@@ -41,7 +38,7 @@ public class CsTemplateHelper {
                 result.append(", ");
 
             for (int i = 0; i < implementedInterfaces.size(); i++) {
-                result.append(CsType.getDisplayName(implementedInterfaces.get(i)));
+                result.append(CsType.renderTypeDefinition(implementedInterfaces.get(i)));
 
                 if (i < implementedInterfaces.size() - 1)
                     result.append(", ");
@@ -61,28 +58,33 @@ public class CsTemplateHelper {
         }
 
         XClassDefinition superclass = classDefinition.getSuperclass();
-        result.append(CsType.getDisplayName(superclass));
+        result.append(CsType.renderTypeDefinition(superclass));
     }
 
     public static void renderConstructors(GenerationResult result, XClassDefinition classDefinition) {
         List<XConstructor> constructors = classDefinition.getConstructors();
-        String csClassName = CsType.getSimpleClassName(classDefinition.getXClass());
+        String csClassName = CsType.renderSimpleTypeName(classDefinition);
 
+        boolean addedProxyCtor = false;
         if (!classDefinition.getXClass().isFinal()) {
             if (!classDefinition.getXClass().isClass(Object.class) && !classDefinition.getXClass().isClass(Throwable.class)) {
                 result.append(TemplateHelper.TAB);
                 result.append("protected ");
                 result.append(csClassName);
-                result.appendNewLine("(JavaVoid v) : base(v) {}");
+                result.append("(JavaVoid v) : base(v) {}");
+                addedProxyCtor = true;
             }
         } else {
             if (constructors.size() == 0) {
                 result.append(TemplateHelper.TAB);
                 result.append("private ");
                 result.append(csClassName);
-                result.appendNewLine("() : base(JavaVoid.Void) {}");
+                result.append("() : base(JavaVoid.Void) {}");
+                addedProxyCtor = true;
             }
         }
+
+        result.ensureEmptyLine(addedProxyCtor);
 
         if (!classDefinition.getXClass().isAbstract()) {
             for (int i = 0; i < constructors.size(); i++) {
@@ -94,31 +96,157 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderMethods(GenerationResult result, XClassDefinition classDefinition, List<XMethod> methods) {
-//        for (int i = 0; i < methods.size(); i++) {
-//            XMethod method = methods.get(i);
-//            ICsTemplate template = new CsMethodTemplate(method);
-//            template.generate().renderTo(result, 1);
-//
-//            if (i < methods.size() - 1) {
-//                result.newLine();
-//            }
-//        }
+    public static void renderTypeParameterConstraints(GenerationResult result, IGenericDeclaration genericDeclaration) {
+        List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
+        for (XTypeVariable typeParameter : typeParameters) {
+            //TODO: render only owning type parameters
+            //if (typeParameter.getGenericDeclaration() != genericDeclaration)
+            //    continue;
+
+            List<XType> bounds = typeParameter.getBounds();
+            if (bounds.size() == 0)
+                continue;
+
+            result.newLine();
+            result.append(TemplateHelper.TAB);
+            result.append("where ");
+            result.append(typeParameter.getName());
+            result.append(" : ");
+
+            for (int i = 0; i < bounds.size(); i++) {
+                XType bound = bounds.get(i);
+                result.append(CsType.renderType(bound));
+
+                if (i < bounds.size() - 1)
+                    result.append(", ");
+            }
+        }
     }
 
-    //TODO: review
     public static void renderMethods(GenerationResult result, XClassDefinition classDefinition) {
-        XClassDefinition superclass = classDefinition.getSuperclass();
-        List<XClassDefinition> superclassImplementedInterfaces = superclass.getImplementedInterfaces();
+        class MethodToRenderInfo {
+            public boolean isNew;
+            public boolean isExplicit;
+        }
 
-        List<XClassDefinition> implementedInterfaces = classDefinition.getImplementedInterfaces();
-        List<XMethod> declaredMethods = classDefinition.getDeclaredMethods();
+        if (classDefinition.getXClass().isInterface()) {
+            renderMethods(result, classDefinition, classDefinition.getDeclaredMethods());
+        } else {
+            List<XClassDefinition> allSuperclassImplementedInterfaces = new LinkedList<>();
+            List<XMethod> allSuperclassMethods = new LinkedList<>();
 
+            XClassDefinition superclass = classDefinition.getSuperclass();
+            while (superclass != null) {
+                List<XClassDefinition> implementedInterfaces = superclass.getImplementedInterfaces();
+                allSuperclassImplementedInterfaces.addAll(implementedInterfaces);
 
+                for (XClassDefinition implementedInterface : implementedInterfaces)
+                    allSuperclassMethods.addAll(implementedInterface.getDeclaredMethods());
 
+                allSuperclassMethods.addAll(superclass.getDeclaredMethods());
+                superclass = superclass.getSuperclass();
+            }
+
+            List<XMethod> allMethods = new LinkedList<>();
+            List<Boolean> allMethodsIsExplicit = new LinkedList<>();
+
+            for (XMethod method : classDefinition.getDeclaredMethods()) {
+                allMethods.add(method);
+                allMethodsIsExplicit.add(false);
+            }
+
+            for (XClassDefinition implementedInterface : classDefinition.getImplementedInterfaces()) {
+                if (allSuperclassImplementedInterfaces.contains(implementedInterface))
+                    continue;
+
+                for (XMethod interfaceMethod : implementedInterface.getDeclaredMethods()) {
+                    boolean add = true;
+                    boolean isExplicit = false;
+
+                    for (XMethod method : allMethods) {
+                        if (method.equals(interfaceMethod)) {
+                            XTypeCompareResult xTypeCompareResult = method.getReturnType().compareTo(interfaceMethod.getReturnType());
+                            if (xTypeCompareResult == XTypeCompareResult.Equal) {
+                                add = false;
+                                break;
+                            }
+
+                            isExplicit = true;
+                            break;
+                        }
+                    }
+
+                    if (add) {
+                        allMethods.add(interfaceMethod);
+                        allMethodsIsExplicit.add(isExplicit);
+                    }
+                }
+            }
+
+            List<XMethod> methodsToRender = new LinkedList<>();
+            List<MethodToRenderInfo> methodsToRenderInfo = new LinkedList<>();
+
+            // calculate isNew
+            for (int i = 0; i < allMethods.size(); i++) {
+                XMethod method = allMethods.get(i);
+                boolean add = true;
+                boolean isNew = false;
+
+                for (XMethod superclassMethod : allSuperclassMethods) {
+                    if (method.equals(superclassMethod)) {
+                        XTypeCompareResult xTypeCompareResult = method.getReturnType().compareTo(superclassMethod.getReturnType());
+                        if (xTypeCompareResult == XTypeCompareResult.Equal)
+                            add = false;
+                        else
+                            isNew = true;
+
+                        break;
+                    }
+                }
+
+                if (add) {
+                    methodsToRender.add(method);
+                    MethodToRenderInfo methodRenderInfo = new MethodToRenderInfo();
+                    methodRenderInfo.isNew = isNew;
+                    methodRenderInfo.isExplicit = allMethodsIsExplicit.get(i);
+                    methodsToRenderInfo.add(methodRenderInfo);
+                }
+            }
+
+            // render
+            result.ensureEmptyLine(methodsToRender.size() > 0);
+
+            for (int i = 0; i < methodsToRender.size(); i++) {
+                XMethod method = methodsToRender.get(i);
+                MethodToRenderInfo methodToRenderInfo = methodsToRenderInfo.get(i);
+
+                ICsTemplate template = new CsMethodTemplate(method, classDefinition, methodToRenderInfo.isNew, methodToRenderInfo.isExplicit);
+                template.generate().renderTo(result, 1);
+
+                if (i < methodsToRender.size() - 1) {
+                    result.newLine();
+                }
+            }
+        }
     }
 
-    public static void renderFields(GenerationResult result, XClassDefinition classDefinition, List<XField> fields) {
+    public static void renderMethods(GenerationResult result, XClassDefinition classDefinition, List<XMethod> methods) {
+        result.ensureEmptyLine(methods.size() > 0);
+
+        for (int i = 0; i < methods.size(); i++) {
+            XMethod method = methods.get(i);
+            ICsTemplate template = new CsMethodTemplate(method, classDefinition, false, false);
+            template.generate().renderTo(result, 1);
+
+            if (i < methods.size() - 1) {
+                result.newLine();
+            }
+        }
+    }
+
+    public static void renderFields(GenerationResult result, List<XField> fields) {
+        result.ensureEmptyLine(fields.size() > 0);
+
         for (int i = 0; i < fields.size(); i++) {
             XField field = fields.get(i);
             ICsTemplate template = new CsPropertyTemplate(field);
@@ -130,7 +258,7 @@ public class CsTemplateHelper {
     }
 
     public static void renderFields(GenerationResult result, XClassDefinition classDefinition) {
-        renderFields(result, classDefinition, classDefinition.getFields());
+        renderFields(result, classDefinition.getFields());
     }
 
     public static String[] getEscapedParameterNames(XExecutable executable) {

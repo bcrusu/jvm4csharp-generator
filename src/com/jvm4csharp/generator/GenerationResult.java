@@ -40,6 +40,14 @@ public class GenerationResult {
         newLine();
     }
 
+    public void ensureEmptyLine(boolean condition) {
+        if (condition) {
+            if (_currentLine.length() > 0)
+                newLine();
+            newLine();
+        }
+    }
+
     public GenerationResultLocation getLocation() {
         return _location;
     }

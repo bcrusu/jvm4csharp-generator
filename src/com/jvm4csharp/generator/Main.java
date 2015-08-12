@@ -30,9 +30,6 @@ public class Main {
 
         IProxyGenerator generator = getProxyGenerator();
 
-        XClassDefinition ttt = XTypeFactory.createClassDefinition(Short.class);
-        generator.generate(ttt);
-
         for (Class clazz : classesToGenerate) {
             XClassDefinition xClassDefinition = XTypeFactory.createClassDefinition(clazz);
 
@@ -51,7 +48,7 @@ public class Main {
     private static boolean ParseArgs(String[] args) {
         _outputDirectory = "E:\\work\\github\\jvm4csharp\\jvm4csharp\\generated";
         _namespacePrefix = "jvm4csharp";
-        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text", "java.security", "java.time"};
+        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
         return true;
     }
 

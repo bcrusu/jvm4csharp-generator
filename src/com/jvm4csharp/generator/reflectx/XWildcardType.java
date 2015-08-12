@@ -12,6 +12,10 @@ public class XWildcardType extends XType {
         _wildcardType = wildcardType;
     }
 
+    XWildcardType(XWildcardType toClone) {
+        _wildcardType = toClone._wildcardType;
+    }
+
     @Override
     public Set<String> getReferencedPackageNames() {
         return new HashSet<>();
@@ -27,6 +31,11 @@ public class XWildcardType extends XType {
             return XTypeCompareResult.Equal;
 
         return XTypeCompareResult.NotEqual;
+    }
+
+    @Override
+    public XType clone() {
+        return new XWildcardType(this);
     }
 
     @Override

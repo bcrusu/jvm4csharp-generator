@@ -14,9 +14,19 @@ public class XGenericArrayType extends XType {
         _getGenericComponentType = XTypeFactory.createEditableType(genericArrayType.getGenericComponentType());
     }
 
+    private XGenericArrayType(XGenericArrayType toClone) {
+        _genericArrayType = toClone._genericArrayType;
+        _getGenericComponentType = toClone._getGenericComponentType.clone();
+    }
+
     @Override
-    void replaceTypeVariable(GenericDeclaration genericDeclaration, String variableName, XType newType) {
-        _getGenericComponentType.replaceTypeVariable(genericDeclaration, variableName, newType);
+    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
+        _getGenericComponentType.replaceTypeVariable(variableOwner, variableName, newType);
+    }
+
+    @Override
+    void renameTypeVariable(GenericDeclaration variableOwner, String oldName, String newName) {
+        _getGenericComponentType.renameTypeVariable(variableOwner, oldName, newName);
     }
 
     @Override
@@ -36,6 +46,11 @@ public class XGenericArrayType extends XType {
             return XTypeCompareResult.Equal;
 
         return getGenericComponentType().compareTo(other2.getGenericComponentType());
+    }
+
+    @Override
+    public XType clone() {
+        return new XGenericArrayType(this);
     }
 
     @Override

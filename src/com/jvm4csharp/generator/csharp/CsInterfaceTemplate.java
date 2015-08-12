@@ -24,10 +24,11 @@ public class CsInterfaceTemplate implements ICsTemplate {
         result.appendNewLine("\")]");
 
         result.append("public interface ");
-        result.append(CsType.getDisplayName(_classDefinition));
+        result.append(CsType.renderTypeDefinition(_classDefinition));
 
         CsTemplateHelper.renderTypeParameters(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
+        CsTemplateHelper.renderTypeParameterConstraints(result, _classDefinition);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

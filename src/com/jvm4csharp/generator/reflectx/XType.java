@@ -5,12 +5,17 @@ import java.util.Set;
 
 public abstract class XType {
     // Used when expanding private superclass/interfaces
-    void replaceTypeVariable(GenericDeclaration genericDeclaration, String variableName, XType newType){
+    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType){
+    }
+
+    void renameTypeVariable(GenericDeclaration variableOwner, String oldName, String newName) {
     }
 
     public abstract Set<String> getReferencedPackageNames();
 
     public abstract XTypeCompareResult compareTo(XType other);
+
+    public abstract XType clone();
 
     // Used for debugging
     protected abstract String getDisplayName();

@@ -35,7 +35,7 @@ public class CsProxyGenerator implements IProxyGenerator {
         set.add("jvm4csharp.ArrayUtils");
 
         for (String referencedPackageName : referencedPackageNames) {
-            String namespace = CsType.getNamespace(referencedPackageName);
+            String namespace = CsType.renderNamespace(referencedPackageName);
 
             if (_namespacePrefix != null && !namespace.startsWith(_namespacePrefix))
                 namespace = _namespacePrefix + "." + namespace;
@@ -53,7 +53,7 @@ public class CsProxyGenerator implements IProxyGenerator {
     private static GenerationResultLocation getLocation(XClassDefinition classDefinition) {
         String packageName = classDefinition.getXClass().getPackageName();
 
-        String name = CsType.getSimpleClassName(classDefinition.getXClass()) + ".gen.cs";
+        String name = CsType.renderSimpleTypeName(classDefinition) + ".gen.cs";
         String path = packageName.replace(".", File.separator);
 
         GenerationResultLocation result = new GenerationResultLocation(path, name);
@@ -61,7 +61,7 @@ public class CsProxyGenerator implements IProxyGenerator {
     }
 
     private GenerationResult generateTemplate(XClassDefinition classDefinition, ICsTemplate template, GenerationResultLocation location) {
-        String currentNamespace = CsType.getNamespace(classDefinition.getXClass());
+        String currentNamespace = CsType.renderNamespace(classDefinition.getXClass());
         if (_namespacePrefix != null)
             currentNamespace = _namespacePrefix + "." + currentNamespace;
 

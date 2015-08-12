@@ -10,17 +10,32 @@ class XEditableType {
         _xType = xType;
     }
 
-    boolean replaceTypeVariable(GenericDeclaration genericDeclaration, String variableName, XType newType) {
-        if (shouldReplaceTypeVariable(genericDeclaration, variableName)) {
-            _xType = newType;
+    private XEditableType(XEditableType toClone) {
+        _xType = toClone._xType.clone();
+    }
+
+    boolean replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
+        if (typeVariableMatches(variableOwner, variableName)) {
+            _xType = newType.clone();
             return true;
         } else {
-            _xType.replaceTypeVariable(genericDeclaration, variableName, newType);
+            _xType.replaceTypeVariable(variableOwner, variableName, newType);
             return false;
         }
     }
 
-    void renameCollidingTypeVariables(GenericDeclaration genericDeclaration, String ownerName) {
+    boolean renameTypeVariable(GenericDeclaration variableOwner, String oldName, String newName) {
+        if (typeVariableMatches(variableOwner, oldName)) {
+            XTypeVariable xTypeVariable = (XTypeVariable) _xType;
+            xTypeVariable.setName(newName);
+            return true;
+        } else {
+            _xType.renameTypeVariable(variableOwner, oldName, newName);
+            return false;
+        }
+    }
+
+    void renameCollidingTypeVariables(GenericDeclaration genericDeclaration, String suffix) {
         if (!(_xType instanceof XTypeVariable))
             return;
 
@@ -32,18 +47,19 @@ class XEditableType {
         String variableName = variable.getName();
         GenericDeclaration variableGenericDeclaration = variable.getGenericDeclaration();
 
+        // rename the colliding type variable by suffixing with "_ownerName[counter]"
         for (TypeVariable typeParameter : typeParameters)
             if (variableGenericDeclaration != genericDeclaration && variableName.equals(typeParameter.getName())) {
-                if (!variableName.contains("_" + ownerName)) {
-                    variable.setName(variableName + "_" + ownerName);
+                if (!variableName.contains("_" + suffix)) {
+                    variable.setName(variableName + "_" + suffix);
                 } else {
-                    String[] splits = variableName.split(ownerName);
+                    String[] splits = variableName.split(suffix);
                     if (splits.length == 1)
-                        variable.setName(variableName + "_" + ownerName);
+                        variable.setName(variableName + "_" + suffix);
                     else if (splits.length == 2) {
                         int counter = Integer.parseInt(splits[1]);
                         counter++;
-                        variable.setName(variableName + "_" + ownerName + Integer.toString(counter));
+                        variable.setName(variableName + "_" + suffix + Integer.toString(counter));
                     } else
                         throw new UnsupportedOperationException();
                 }
@@ -61,11 +77,15 @@ class XEditableType {
         return getType().toString();
     }
 
-    private boolean shouldReplaceTypeVariable(GenericDeclaration genericDeclaration, String variableName) {
+    private boolean typeVariableMatches(GenericDeclaration variableOwner, String variableName) {
         if (!(_xType instanceof XTypeVariable))
             return false;
 
         XTypeVariable xTypeVariable = (XTypeVariable) _xType;
-        return xTypeVariable.getGenericDeclaration() == genericDeclaration && variableName.equals(xTypeVariable.getName());
+        return xTypeVariable.getGenericDeclaration() == variableOwner && variableName.equals(xTypeVariable.getName());
+    }
+
+    public XEditableType clone() {
+        return new XEditableType(this);
     }
 }

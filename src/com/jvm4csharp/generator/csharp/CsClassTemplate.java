@@ -31,11 +31,12 @@ public class CsClassTemplate implements ICsTemplate {
             result.append(" partial");
 
         result.append(" class ");
-        result.append(CsType.getDisplayName(_classDefinition));
+        result.append(CsType.renderTypeDefinition(_classDefinition));
 
         CsTemplateHelper.renderTypeParameters(result, _classDefinition);
         CsTemplateHelper.renderBaseClass(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
+        CsTemplateHelper.renderTypeParameterConstraints(result, _classDefinition);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

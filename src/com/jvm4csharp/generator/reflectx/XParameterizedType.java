@@ -2,6 +2,7 @@ package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.ParameterizedType;
+import java.text.CollationElementIterator;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -22,10 +23,25 @@ public class XParameterizedType extends XType {
                 .collect(Collectors.toList());
     }
 
+    private XParameterizedType(XParameterizedType toClone) {
+        _parameterizedType = toClone._parameterizedType;
+        _rawType = toClone._rawType;
+        _actualTypeArguments = toClone._actualTypeArguments
+                .stream()
+                .map(x -> x.clone())
+                .collect(Collectors.toList());
+    }
+
     @Override
-    void replaceTypeVariable(GenericDeclaration genericDeclaration, String variableName, XType newType) {
+    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
         for (XEditableType _actualTypeArgument : _actualTypeArguments)
-            _actualTypeArgument.replaceTypeVariable(genericDeclaration, variableName, newType);
+            _actualTypeArgument.replaceTypeVariable(variableOwner, variableName, newType);
+    }
+
+    @Override
+    void renameTypeVariable(GenericDeclaration variableOwner, String oldName, String newName) {
+        for (XEditableType _actualTypeArgument : _actualTypeArguments)
+            _actualTypeArgument.renameTypeVariable(variableOwner, oldName, newName);
     }
 
     @Override
@@ -59,6 +75,11 @@ public class XParameterizedType extends XType {
                 return XTypeCompareResult.NotEqual;
 
         return XTypeCompareResult.Equal;
+    }
+
+    @Override
+    public XType clone() {
+        return new XParameterizedType(this);
     }
 
     @Override

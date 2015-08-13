@@ -1,7 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.GenericDeclaration;
 
 public class XConstructor extends XExecutable {
     private final Constructor _constructor;
@@ -24,8 +23,11 @@ public class XConstructor extends XExecutable {
         return getDeclaringClass().getXClass().getSimpleName();
     }
 
-    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
-        for (XEditableType type : getEditableParameterTypes())
-            type.replaceTypeVariable(variableOwner, variableName, newType);
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof XConstructor))
+            return false;
+
+        return super.equals(other);
     }
 }

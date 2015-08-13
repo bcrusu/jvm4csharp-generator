@@ -58,6 +58,12 @@ public class CsTemplateHelper {
         }
 
         XClassDefinition superclass = classDefinition.getSuperclass();
+
+        if (superclass.getXClass().isClass(Object.class)) {
+            result.append("Object");
+            return;
+        }
+
         result.append(CsType.renderTypeDefinition(superclass));
     }
 
@@ -99,10 +105,6 @@ public class CsTemplateHelper {
     public static void renderTypeParameterConstraints(GenerationResult result, IGenericDeclaration genericDeclaration) {
         List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
         for (XTypeVariable typeParameter : typeParameters) {
-            //TODO: render only owning type parameters
-            //if (typeParameter.getGenericDeclaration() != genericDeclaration)
-            //    continue;
-
             List<XType> bounds = typeParameter.getBounds();
             if (bounds.size() == 0)
                 continue;

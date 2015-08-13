@@ -1,8 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.ParameterizedType;
-import java.text.CollationElementIterator;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -12,36 +10,15 @@ import java.util.stream.Collectors;
 public class XParameterizedType extends XType {
     private final ParameterizedType _parameterizedType;
     private final XClass _rawType;
-    private final List<XEditableType> _actualTypeArguments;
+    private final List<XType> _actualTypeArguments;
 
-    XParameterizedType(ParameterizedType parameterizedType) {
+    XParameterizedType(XTypeFactory typeFactory, ParameterizedType parameterizedType) {
         _parameterizedType = parameterizedType;
-        _rawType = (XClass) XTypeFactory.createType(parameterizedType.getRawType());
+        _rawType = (XClass) typeFactory.getType(parameterizedType.getRawType());
         _actualTypeArguments = Arrays.asList(parameterizedType.getActualTypeArguments())
                 .stream()
-                .map(XTypeFactory::createEditableType)
+                .map(typeFactory::getType)
                 .collect(Collectors.toList());
-    }
-
-    private XParameterizedType(XParameterizedType toClone) {
-        _parameterizedType = toClone._parameterizedType;
-        _rawType = toClone._rawType;
-        _actualTypeArguments = toClone._actualTypeArguments
-                .stream()
-                .map(x -> x.clone())
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
-        for (XEditableType _actualTypeArgument : _actualTypeArguments)
-            _actualTypeArgument.replaceTypeVariable(variableOwner, variableName, newType);
-    }
-
-    @Override
-    void renameTypeVariable(GenericDeclaration variableOwner, String oldName, String newName) {
-        for (XEditableType _actualTypeArgument : _actualTypeArguments)
-            _actualTypeArgument.renameTypeVariable(variableOwner, oldName, newName);
     }
 
     @Override
@@ -78,18 +55,13 @@ public class XParameterizedType extends XType {
     }
 
     @Override
-    public XType clone() {
-        return new XParameterizedType(this);
-    }
-
-    @Override
     protected String getDisplayName() {
         StringBuilder sb = new StringBuilder();
         sb.append(_parameterizedType.getRawType().getTypeName());
         sb.append("<");
 
         for (int i = 0; i < _actualTypeArguments.size(); i++) {
-            sb.append(_actualTypeArguments.get(i).getType().getDisplayName());
+            sb.append(_actualTypeArguments.get(i).getDisplayName());
 
             if (i < _actualTypeArguments.size() - 1)
                 sb.append(", ");
@@ -104,8 +76,6 @@ public class XParameterizedType extends XType {
     }
 
     public List<XType> getActualTypeArguments() {
-        return _actualTypeArguments.stream()
-                .map(XEditableType::getType)
-                .collect(Collectors.toList());
+        return _actualTypeArguments;
     }
 }

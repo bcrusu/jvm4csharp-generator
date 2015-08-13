@@ -1,7 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.Executable;
-import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -12,22 +11,22 @@ import java.util.stream.Collectors;
 public abstract class XExecutable implements IGenericDeclaration {
     private final XClassDefinition _declaringClass;
     private final Executable _executable;
-    private List<XEditableType> _parameterTypes;
-    private List<XEditableType> _typeParameters;
+    private final List<XType> _parameterTypes;
+    private final List<XTypeVariable> _typeParameters;
 
     XExecutable(XClassDefinition declaringClass, Executable executable) {
         _declaringClass = declaringClass;
         _executable = executable;
-    }
-
-    void renameCollidingTypeVariables(GenericDeclaration variableOwner) {
-        String suffix = getName();
-
-        for (XEditableType item : getEditableParameterTypes())
-            item.renameCollidingTypeVariables(variableOwner, suffix);
-
-        for (XEditableType item : getEditableTypeParameters())
-            item.renameCollidingTypeVariables(variableOwner, suffix);
+        _typeParameters = Arrays.asList(_executable.getTypeParameters())
+                .stream()
+                .filter(x -> x.getGenericDeclaration() == executable)
+                .map(declaringClass.getTypeFactory()::getType)
+                .map(x -> (XTypeVariable) x)
+                .collect(Collectors.toList());
+        _parameterTypes = Arrays.asList(_executable.getGenericParameterTypes())
+                .stream()
+                .map(declaringClass.getTypeFactory()::getType)
+                .collect(Collectors.toList());
     }
 
     public Set<String> getReferencedPackageNames() {
@@ -40,10 +39,7 @@ public abstract class XExecutable implements IGenericDeclaration {
     }
 
     public List<XType> getParameterTypes() {
-        return getEditableParameterTypes()
-                .stream()
-                .map(XEditableType::getType)
-                .collect(Collectors.toList());
+        return _parameterTypes;
     }
 
     public List<String> getParameterNames() {
@@ -55,11 +51,7 @@ public abstract class XExecutable implements IGenericDeclaration {
 
     @Override
     public List<XTypeVariable> getTypeParameters() {
-        return getEditableTypeParameters()
-                .stream()
-                .map(XEditableType::getType)
-                .map(x -> (XTypeVariable) x)
-                .collect(Collectors.toList());
+        return _typeParameters;
     }
 
     public abstract String getInternalSignature();
@@ -70,23 +62,43 @@ public abstract class XExecutable implements IGenericDeclaration {
         return _declaringClass;
     }
 
-    protected List<XEditableType> getEditableParameterTypes() {
-        if (_parameterTypes == null)
-            _parameterTypes = Arrays.asList(_executable.getGenericParameterTypes())
-                    .stream()
-                    .map(XTypeFactory::createEditableType)
-                    .collect(Collectors.toList());
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof XExecutable))
+            return false;
 
-        return _parameterTypes;
+        XExecutable other2 = (XExecutable) other;
+        if (!getName().equals(other2.getName()))
+            return false;
+
+        List<XType> thisParameterTypes = getParameterTypes();
+        List<XType> otherParameterTypes = other2.getParameterTypes();
+
+        if (thisParameterTypes.size() != otherParameterTypes.size())
+            return false;
+
+        for (int i = 0; i < thisParameterTypes.size(); i++)
+            if (thisParameterTypes.get(i).compareTo(otherParameterTypes.get(i)) != XTypeCompareResult.Equal)
+                return false;
+
+        return true;
     }
 
-    protected List<XEditableType> getEditableTypeParameters() {
-        if (_typeParameters == null)
-            _typeParameters = Arrays.asList(_executable.getTypeParameters())
-                    .stream()
-                    .map(XTypeFactory::createEditableType)
-                    .collect(Collectors.toList());
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getName());
+        sb.append("(");
 
-        return _typeParameters;
+        List<XType> parameterTypes = _parameterTypes;
+        for (int i = 0; i < parameterTypes.size(); i++) {
+            sb.append(parameterTypes.get(i));
+
+            if (i < parameterTypes.size() - 1)
+                sb.append(", ");
+        }
+
+        sb.append(")");
+        return sb.toString();
     }
 }

@@ -3,6 +3,7 @@ package com.jvm4csharp.generator.csharp;
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
 import com.jvm4csharp.generator.reflectx.XClass;
+import com.jvm4csharp.generator.reflectx.XClassDefinition;
 import com.jvm4csharp.generator.reflectx.XConstructor;
 import com.jvm4csharp.generator.reflectx.XType;
 
@@ -20,7 +21,8 @@ public class CsConstructorTemplate implements ICsTemplate {
         String internalSignature = _constructor.getInternalSignature();
         List<XType> parameterTypes = _constructor.getParameterTypes();
         String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(_constructor);
-        XClass declaringClass = _constructor.getDeclaringClass().getXClass();
+        XClassDefinition declaringClass = _constructor.getDeclaringClass();
+        XClass clazz = declaringClass.getXClass();
 
         GenerationResult result = new GenerationResult();
 
@@ -39,7 +41,7 @@ public class CsConstructorTemplate implements ICsTemplate {
                 result.append(", ");
         }
         result.append(")");
-        if (!declaringClass.isClass(Object.class) && !declaringClass.isClass(Throwable.class))
+        if (!clazz.isClass(Object.class) && !clazz.isClass(Throwable.class))
             result.append(" : base(JavaVoid.Void)");
 
         result.newLine();

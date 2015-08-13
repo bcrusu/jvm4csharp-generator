@@ -2,7 +2,7 @@ package com.jvm4csharp.generator;
 
 import com.jvm4csharp.generator.csharp.CsProxyGenerator;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
-import com.jvm4csharp.generator.reflectx.XTypeFactory;
+import com.jvm4csharp.generator.reflectx.XClassDefinitionFactory;
 
 import java.util.LinkedList;
 
@@ -31,7 +31,7 @@ public class Main {
         IProxyGenerator generator = getProxyGenerator();
 
         for (Class clazz : classesToGenerate) {
-            XClassDefinition xClassDefinition = XTypeFactory.createClassDefinition(clazz);
+            XClassDefinition xClassDefinition = XClassDefinitionFactory.createClassDefinition(clazz);
 
             System.out.format("Generating class: %1s", clazz.getName());
 

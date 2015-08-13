@@ -1,8 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Member;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 
 class XUtils {
     static boolean isPublic(int modifier) {

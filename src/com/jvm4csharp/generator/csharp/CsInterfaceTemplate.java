@@ -2,6 +2,7 @@ package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
 
 import java.util.stream.Collectors;
@@ -15,7 +16,8 @@ public class CsInterfaceTemplate implements ICsTemplate {
 
     @Override
     public GenerationResult generate() {
-        String internalTypeName = _classDefinition.getXClass().getInternalTypeName();
+        XClass xClass = _classDefinition.getXClass();
+        String internalTypeName = xClass.getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
@@ -28,7 +30,7 @@ public class CsInterfaceTemplate implements ICsTemplate {
 
         CsTemplateHelper.renderTypeParameters(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
-        CsTemplateHelper.renderTypeParameterConstraints(result, _classDefinition);
+        CsTemplateHelper.renderTypeParameterConstraints(result, xClass);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

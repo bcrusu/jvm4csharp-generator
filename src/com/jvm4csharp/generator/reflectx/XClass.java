@@ -6,24 +6,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class XClass extends XType {
+public class XClass extends XType implements IGenericDeclaration {
+    private final XTypeFactory _typeFactory;
     private final Class _class;
-    private final XClass _arrayComponentType;
-    private final List<XTypeVariable> _typeParameters;
+    private XClass _arrayComponentType;
+    private List<XTypeVariable> _typeParameters;
 
-    XClass(Class clazz) {
+    XClass(XTypeFactory typeFactory, Class clazz) {
+        _typeFactory = typeFactory;
         _class = clazz;
-        _arrayComponentType = clazz.isArray() ? (XClass) XTypeFactory.createType(_class.getComponentType()) : null;
-        _typeParameters = Arrays.asList(_class.getTypeParameters())
-                .stream()
-                .map(XTypeVariable::new)
-                .collect(Collectors.toList());
-    }
-
-    private XClass(XClass toClone) {
-        _class = toClone._class;
-        _arrayComponentType = toClone._arrayComponentType;
-        _typeParameters = toClone._typeParameters;
     }
 
     @Override
@@ -56,8 +47,11 @@ public class XClass extends XType {
     }
 
     @Override
-    public XType clone() {
-        return new XClass(this);
+    public boolean equals(Object other) {
+        if (!(other instanceof XClass))
+            return false;
+
+        return _class.equals(((XClass) other)._class);
     }
 
     @Override
@@ -110,6 +104,8 @@ public class XClass extends XType {
     }
 
     public XClass getArrayComponentType() {
+        if (_arrayComponentType == null && isArray())
+            _arrayComponentType = XClassFactory.getClass(_class.getComponentType());
         return _arrayComponentType;
     }
 
@@ -119,10 +115,16 @@ public class XClass extends XType {
 
     public XClass getDeclaringClass() {
         Class declaringClass = _class.getDeclaringClass();
-        return declaringClass != null ? (XClass) XTypeFactory.createType(declaringClass) : null;
+        return declaringClass != null ? XClassFactory.getClass(declaringClass) : null;
     }
 
     public List<XTypeVariable> getTypeParameters() {
+        if (_typeParameters == null)
+            _typeParameters = Arrays.asList(_class.getTypeParameters())
+                    .stream()
+                    .map(_typeFactory::getType)
+                    .map(x -> (XTypeVariable) x)
+                    .collect(Collectors.toList());
         return _typeParameters;
     }
 

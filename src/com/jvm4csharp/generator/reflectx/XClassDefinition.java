@@ -4,42 +4,49 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class XClassDefinition implements IGenericDeclaration {
+public class XClassDefinition implements IGenericDeclaration{
+    private final XTypeFactory _typeFactory;
     private final Class _class;
     private final XClass _xClass;
-    private final List<XEditableType> _actualTypeArguments;
+    private final List<XType> _actualTypeArguments;
     private final List<XField> _fields;
     private final List<XMethod> _declaredMethods;
     private final List<XConstructor> _constructors;
+    private final List<XTypeVariable> _typeParameters;
     private XClassDefinition _superclass;
     private List<XClassDefinition> _implementedInterfaces;
 
-    private XClassDefinition(Class clazz, Type[] actualTypeArguments) {
+    private XClassDefinition(XTypeFactory typeFactory, Class clazz, Type[] actualTypeArguments) {
+        _typeFactory = typeFactory;
         _class = clazz;
-        _xClass = (XClass) XTypeFactory.createType(clazz);
+        _xClass = XClassFactory.getClass(clazz);
+        _typeParameters = Arrays.asList(_class.getTypeParameters())
+                .stream()
+                .map(_typeFactory::getType)
+                .map(x -> (XTypeVariable) x)
+                .collect(Collectors.toList());
         _actualTypeArguments = Arrays.asList(actualTypeArguments)
                 .stream()
-                .map(XTypeFactory::createEditableType)
+                .map(typeFactory::getType)
                 .collect(Collectors.toList());
-
         _fields = getPublicFields(this);
         _constructors = getPublicConstructors(this);
         _declaredMethods = getPublicDeclaredMethods(this);
+        _implementedInterfaces = getPublicImplementedInterfaces(clazz);
 
-        handleActualTypeVariablesForMembers();
+        typeFactory.renameCollidingTypeVariablesForMembers(clazz);
     }
 
-    XClassDefinition(Class clazz) {
-        this(clazz, new Type[0]);
+    XClassDefinition(XTypeFactory typeFactory, Class clazz) {
+        this(typeFactory, clazz, new Type[0]);
     }
 
-    XClassDefinition(ParameterizedType parameterizedType) {
-        this((Class) parameterizedType.getRawType(), parameterizedType.getActualTypeArguments());
+    XClassDefinition(XTypeFactory typeFactory, ParameterizedType parameterizedType) {
+        this(typeFactory, (Class) parameterizedType.getRawType(), parameterizedType.getActualTypeArguments());
     }
 
-    @Override
-    public List<XTypeVariable> getTypeParameters() {
-        return getXClass().getTypeParameters();
+    XTypeFactory getTypeFactory() {
+        return _typeFactory;
     }
 
     public Set<String> getReferencedPackageNames() {
@@ -82,14 +89,14 @@ public class XClassDefinition implements IGenericDeclaration {
         if (_class != other2._class)
             return false;
 
-        List<XEditableType> thisActualTypeArguments = _actualTypeArguments;
-        List<XEditableType> otherActualTypeArguments = other2._actualTypeArguments;
+        List<XType> thisActualTypeArguments = _actualTypeArguments;
+        List<XType> otherActualTypeArguments = other2._actualTypeArguments;
 
         if (thisActualTypeArguments.size() != otherActualTypeArguments.size())
             return false;
 
         for (int i = 0; i < thisActualTypeArguments.size(); i++)
-            if (thisActualTypeArguments.get(i).getType().compareTo(otherActualTypeArguments.get(i).getType()) != XTypeCompareResult.Equal)
+            if (thisActualTypeArguments.get(i).compareTo(otherActualTypeArguments.get(i)) != XTypeCompareResult.Equal)
                 return false;
 
         return true;
@@ -104,10 +111,13 @@ public class XClassDefinition implements IGenericDeclaration {
         return _xClass;
     }
 
+    @Override
+    public List<XTypeVariable> getTypeParameters() {
+        return _typeParameters;
+    }
+
     public List<XType> getActualTypeArguments() {
-        return _actualTypeArguments.stream()
-                .map(XEditableType::getType)
-                .collect(Collectors.toList());
+        return _actualTypeArguments;
     }
 
     public List<XField> getFields() {
@@ -131,6 +141,10 @@ public class XClassDefinition implements IGenericDeclaration {
         return _superclass;
     }
 
+    public List<XClassDefinition> getImplementedInterfaces() {
+        return _implementedInterfaces;
+    }
+
     private static XClassDefinition getPublicSuperclass(Class clazz) {
         Class superclass = clazz.getSuperclass();
         Type genericSuperclass = clazz.getGenericSuperclass();
@@ -141,19 +155,10 @@ public class XClassDefinition implements IGenericDeclaration {
             superclass = superclass.getSuperclass();
         }
 
-        return XTypeFactory.createClassDefinition(genericSuperclass);
+        return XClassDefinitionFactory.createClassDefinition(genericSuperclass);
     }
 
-    public List<XClassDefinition> getImplementedInterfaces() {
-        if (_implementedInterfaces == null)
-            _implementedInterfaces = getPublicImplementedInterfaces(_class);
-
-        return _implementedInterfaces
-                .stream()
-                .collect(Collectors.toList());
-    }
-
-    private static List<XClassDefinition> getPublicImplementedInterfaces(Class clazz) {
+    private List<XClassDefinition> getPublicImplementedInterfaces(Class clazz) {
         List<XClassDefinition> publicInterfaces = new LinkedList<>();
         if (Object.class == clazz)
             return publicInterfaces;
@@ -164,15 +169,15 @@ public class XClassDefinition implements IGenericDeclaration {
         Type[] genericInterfaces = clazz.getGenericInterfaces();
         for (int i = 0; i < interfaces.length; i++) {
             Class currentInterface = interfaces[i];
-            Type currentGenericInterface = genericInterfaces[i];
 
             if (XUtils.isPublic(currentInterface))
-                publicInterfaces.add(XTypeFactory.createClassDefinition(genericInterfaces[i]));
+                publicInterfaces.add(XClassDefinitionFactory.createClassDefinition(_typeFactory, genericInterfaces[i]));
             else {
                 // expand public interfaces from private implemented interface
                 Collection<XClassDefinition> publicInterfacesFromPrivateInterface = getPublicImplementedInterfaces(currentInterface);
-                for (XClassDefinition publicInterface : publicInterfacesFromPrivateInterface)
-                    replaceTypeVariables(publicInterface, currentGenericInterface);
+
+                if (genericInterfaces[i] instanceof ParameterizedType)
+                    _typeFactory.replaceActualTypeArguments((ParameterizedType) genericInterfaces[i]);
 
                 publicInterfaces.addAll(publicInterfacesFromPrivateInterface);
             }
@@ -185,8 +190,9 @@ public class XClassDefinition implements IGenericDeclaration {
 
             if (!XUtils.isPublic(superclass)) {
                 Collection<XClassDefinition> publicInterfacesFromPrivateSuperclass = getPublicImplementedInterfaces(superclass);
-                for (XClassDefinition publicInterface : publicInterfacesFromPrivateSuperclass)
-                    replaceTypeVariables(publicInterface, genericSuperclass);
+
+                if (genericSuperclass instanceof ParameterizedType)
+                    _typeFactory.replaceActualTypeArguments((ParameterizedType) genericSuperclass);
 
                 publicInterfaces.addAll(publicInterfacesFromPrivateSuperclass);
             }
@@ -202,36 +208,6 @@ public class XClassDefinition implements IGenericDeclaration {
 
         return result.stream()
                 .collect(Collectors.toList());
-    }
-
-    private static void replaceTypeVariables(XClassDefinition classDefinition, Type genericType) {
-        if (genericType instanceof Class)
-            return;
-
-        if (genericType instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) genericType;
-            Class rawType = (Class) parameterizedType.getRawType();
-
-            TypeVariable[] typeParameters = rawType.getTypeParameters();
-            Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
-
-            for (int i = 0; i < actualTypeArguments.length; i++)
-                classDefinition.replaceTypeVariable(rawType, typeParameters[i].getName(), XTypeFactory.createType(actualTypeArguments[i]));
-
-            return;
-        }
-
-        throw new IllegalArgumentException(String.format("Unhandled type '%1s'.", genericType));
-    }
-
-    public void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
-        for (int i = 0; i < _actualTypeArguments.size(); i++)
-            if (_actualTypeArguments.get(i).replaceTypeVariable(variableOwner, variableName, newType)) {
-                String typeParameterName = _class.getTypeParameters()[i].getName();
-
-                for (XMethod method : getDeclaredMethods())
-                    method.replaceTypeVariable(_class, typeParameterName, newType);
-            }
     }
 
     private static List<XField> getPublicFields(XClassDefinition classDefinition) {
@@ -256,36 +232,5 @@ public class XClassDefinition implements IGenericDeclaration {
                 .filter(XUtils::isPublic)
                 .map(x -> new XMethod(classDefinition, x))
                 .collect(Collectors.toList());
-    }
-
-    private void handleActualTypeVariablesForMembers() {
-        Class clazz = _class;
-        List<XTypeVariable> typeParameters = getTypeParameters();
-
-        // the order is important:
-        // 1st - rename colliding type variables
-        for (XConstructor constructor : _constructors)
-            constructor.renameCollidingTypeVariables(clazz);
-
-        for (XMethod method : _declaredMethods)
-            method.renameCollidingTypeVariables(clazz);
-
-        if (_actualTypeArguments.size() == 0)
-            return;
-
-        // 2nd replace actual type variables
-        for (int i = 0; i < typeParameters.size(); i++) {
-            XType actualTypeArgument = _actualTypeArguments.get(i).getType();
-            XTypeVariable typeParameter = typeParameters.get(i);
-
-            for (XField field : _fields)
-                field.replaceTypeVariable(clazz, typeParameter.getName(), actualTypeArgument);
-
-            for (XConstructor constructor : _constructors)
-                constructor.replaceTypeVariable(clazz, typeParameter.getName(), actualTypeArgument);
-
-            for (XMethod method : _declaredMethods)
-                method.replaceTypeVariable(clazz, typeParameter.getName(), actualTypeArgument);
-        }
     }
 }

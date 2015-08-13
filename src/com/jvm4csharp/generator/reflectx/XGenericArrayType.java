@@ -1,32 +1,18 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.GenericDeclaration;
 import java.util.HashSet;
 import java.util.Set;
 
 public class XGenericArrayType extends XType {
+    private final XTypeFactory _typeFactory;
     private final GenericArrayType _genericArrayType;
-    private XEditableType _getGenericComponentType;
+    private final XType _getGenericComponentType;
 
-    XGenericArrayType(GenericArrayType genericArrayType) {
+    XGenericArrayType(XTypeFactory typeFactory, GenericArrayType genericArrayType) {
+        _typeFactory = typeFactory;
         _genericArrayType = genericArrayType;
-        _getGenericComponentType = XTypeFactory.createEditableType(genericArrayType.getGenericComponentType());
-    }
-
-    private XGenericArrayType(XGenericArrayType toClone) {
-        _genericArrayType = toClone._genericArrayType;
-        _getGenericComponentType = toClone._getGenericComponentType.clone();
-    }
-
-    @Override
-    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
-        _getGenericComponentType.replaceTypeVariable(variableOwner, variableName, newType);
-    }
-
-    @Override
-    void renameTypeVariable(GenericDeclaration variableOwner, String oldName, String newName) {
-        _getGenericComponentType.renameTypeVariable(variableOwner, oldName, newName);
+        _getGenericComponentType = typeFactory.getType(genericArrayType.getGenericComponentType());
     }
 
     @Override
@@ -49,16 +35,11 @@ public class XGenericArrayType extends XType {
     }
 
     @Override
-    public XType clone() {
-        return new XGenericArrayType(this);
-    }
-
-    @Override
     protected String getDisplayName() {
-        return _getGenericComponentType.getType().getDisplayName() + "[]";
+        return _getGenericComponentType.getDisplayName() + "[]";
     }
 
     public XType getGenericComponentType() {
-        return _getGenericComponentType.getType();
+        return _getGenericComponentType;
     }
 }

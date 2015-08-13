@@ -1,33 +1,17 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Set;
 
 public class XMethod extends XExecutable {
     private final Method _method;
-    private final XEditableType _returnType;
+    private final XType _returnType;
 
     XMethod(XClassDefinition declaringClass, Method method) {
         super(declaringClass, method);
         _method = method;
-        _returnType = XTypeFactory.createEditableType(_method.getGenericReturnType());
-    }
-
-    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
-        if (isStatic()) return;
-
-        _returnType.replaceTypeVariable(variableOwner, variableName, newType);
-
-        for (XEditableType type : getEditableParameterTypes())
-            type.replaceTypeVariable(variableOwner, variableName, newType);
-    }
-
-    void renameCollidingTypeVariables(GenericDeclaration variableOwner) {
-        super.renameCollidingTypeVariables(variableOwner);
-        String suffix = getName();
-        _returnType.renameCollidingTypeVariables(variableOwner, suffix);
+        _returnType = declaringClass.getTypeFactory().getType(_method.getGenericReturnType());
     }
 
     @Override
@@ -37,6 +21,7 @@ public class XMethod extends XExecutable {
         return result;
     }
 
+    @Override
     public String getName() {
         return _method.getName();
     }
@@ -58,7 +43,7 @@ public class XMethod extends XExecutable {
     }
 
     public XType getReturnType() {
-        return _returnType.getType();
+        return _returnType;
     }
 
     public boolean isVoidReturnType() {
@@ -78,18 +63,7 @@ public class XMethod extends XExecutable {
         StringBuilder sb = new StringBuilder();
         sb.append(getReturnType());
         sb.append(" ");
-        sb.append(getName());
-        sb.append("(");
-
-        List<XType> parameterTypes = getParameterTypes();
-        for (int i = 0; i < parameterTypes.size(); i++) {
-            sb.append(parameterTypes.get(i));
-
-            if (i < parameterTypes.size() - 1)
-                sb.append(", ");
-        }
-
-        sb.append(")");
+        sb.append(super.toString());
         return sb.toString();
     }
 
@@ -98,20 +72,6 @@ public class XMethod extends XExecutable {
         if (!(other instanceof XMethod))
             return false;
 
-        XMethod other2 = (XMethod) other;
-        if (!getName().equals(other2.getName()))
-            return false;
-
-        List<XType> thisParameterTypes = getParameterTypes();
-        List<XType> otherParameterTypes = other2.getParameterTypes();
-
-        if (thisParameterTypes.size() != otherParameterTypes.size())
-            return false;
-
-        for (int i = 0; i < thisParameterTypes.size(); i++)
-            if (thisParameterTypes.get(i).compareTo(otherParameterTypes.get(i)) != XTypeCompareResult.Equal)
-                return false;
-
-        return true;
+        return super.equals(other);
     }
 }

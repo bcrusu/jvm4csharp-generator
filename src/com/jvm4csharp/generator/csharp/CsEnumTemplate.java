@@ -2,6 +2,7 @@ package com.jvm4csharp.generator.csharp;
 
 import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
+import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
 
 public class CsEnumTemplate implements ICsTemplate {
@@ -13,7 +14,8 @@ public class CsEnumTemplate implements ICsTemplate {
 
     @Override
     public GenerationResult generate() {
-        String internalTypeName = _classDefinition.getXClass().getInternalTypeName();
+        XClass xClass = _classDefinition.getXClass();
+        String internalTypeName = xClass.getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
@@ -22,7 +24,7 @@ public class CsEnumTemplate implements ICsTemplate {
         result.appendNewLine("\")]");
 
         result.append("public");
-        if (_classDefinition.getXClass().isAbstract())
+        if (xClass.isAbstract())
             result.append(" abstract");
         else
             result.append(" sealed");
@@ -31,7 +33,7 @@ public class CsEnumTemplate implements ICsTemplate {
 
         CsTemplateHelper.renderBaseClass(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
-        CsTemplateHelper.renderTypeParameterConstraints(result, _classDefinition);
+        CsTemplateHelper.renderTypeParameterConstraints(result, xClass);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

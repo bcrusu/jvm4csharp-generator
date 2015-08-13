@@ -6,14 +6,12 @@ import java.util.Set;
 
 //TODO: does it require replaceTypeVariable override?
 public class XWildcardType extends XType {
+    private final XTypeFactory _typeFactory;
     private final WildcardType _wildcardType;
 
-    XWildcardType(WildcardType wildcardType) {
+    XWildcardType(XTypeFactory typeFactory, WildcardType wildcardType) {
+        _typeFactory = typeFactory;
         _wildcardType = wildcardType;
-    }
-
-    XWildcardType(XWildcardType toClone) {
-        _wildcardType = toClone._wildcardType;
     }
 
     @Override
@@ -31,11 +29,6 @@ public class XWildcardType extends XType {
             return XTypeCompareResult.Equal;
 
         return XTypeCompareResult.NotEqual;
-    }
-
-    @Override
-    public XType clone() {
-        return new XWildcardType(this);
     }
 
     @Override

@@ -14,7 +14,8 @@ public class CsClassTemplate implements ICsTemplate {
 
     @Override
     public GenerationResult generate() {
-        String internalTypeName = _classDefinition.getXClass().getInternalTypeName();
+        XClass xClass = _classDefinition.getXClass();
+        String internalTypeName = xClass.getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
@@ -23,9 +24,9 @@ public class CsClassTemplate implements ICsTemplate {
         result.appendNewLine("\")]");
 
         result.append("public");
-        if (_classDefinition.getXClass().isAbstract())
+        if (xClass.isAbstract())
             result.append(" abstract");
-        if (_classDefinition.getXClass().isFinal())
+        if (xClass.isFinal())
             result.append(" sealed");
         if (addPartialKeyword())
             result.append(" partial");

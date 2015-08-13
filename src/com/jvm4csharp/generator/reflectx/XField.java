@@ -1,19 +1,16 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.GenericDeclaration;
 import java.util.HashSet;
 import java.util.Set;
 
 public class XField {
     private final XClassDefinition _declaringClass;
     private final Field _field;
-    private final XEditableType _type;
 
     XField(XClassDefinition declaringClass, Field field) {
         _declaringClass = declaringClass;
         _field = field;
-        _type = XTypeFactory.createEditableType(_field.getGenericType());
     }
 
     public Set<String> getReferencedPackageNames() {
@@ -43,11 +40,6 @@ public class XField {
     }
 
     public XType getType() {
-        return _type.getType();
-    }
-
-    void replaceTypeVariable(GenericDeclaration variableOwner, String variableName, XType newType) {
-        if (isStatic()) return;
-        _type.replaceTypeVariable(variableOwner, variableName, newType);
+        return _declaringClass.getTypeFactory().getType(_field.getGenericType());
     }
 }

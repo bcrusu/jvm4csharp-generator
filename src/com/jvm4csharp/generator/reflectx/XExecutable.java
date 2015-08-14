@@ -29,7 +29,7 @@ public abstract class XExecutable implements IGenericDeclaration {
                 .collect(Collectors.toList());
     }
 
-    public Set<String> getReferencedPackageNames() {
+    public Set<String> getReferencedPackages() {
         HashSet<String> result = new HashSet<>();
 
         for (XType item : getParameterTypes())

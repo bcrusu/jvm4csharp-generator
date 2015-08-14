@@ -190,6 +190,7 @@ public class CsType {
             return renderSimpleTypeName(xParameterizedType.getRawType());
         } else if (xType instanceof XWildcardType) {
             // C# doesn't have a similar feature; will default to Object
+            //TODO: use upper bounds
             return IJavaObjectTypeName;
         } else if (xType instanceof XGenericArrayType) {
             XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;

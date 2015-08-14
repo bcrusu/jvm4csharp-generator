@@ -13,7 +13,7 @@ public class XField {
         _field = field;
     }
 
-    public Set<String> getReferencedPackageNames() {
+    public Set<String> getReferencedPackages() {
         HashSet<String> result = new HashSet<>();
         result.addAll(getType().getReferencedPackageNames());
         return result;

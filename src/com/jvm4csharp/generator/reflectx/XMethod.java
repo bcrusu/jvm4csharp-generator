@@ -14,8 +14,8 @@ public class XMethod extends XExecutable {
     }
 
     @Override
-    public Set<String> getReferencedPackageNames() {
-        Set<String> result = super.getReferencedPackageNames();
+    public Set<String> getReferencedPackages() {
+        Set<String> result = super.getReferencedPackages();
         result.addAll(getReturnType().getReferencedPackageNames());
         return result;
     }

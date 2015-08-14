@@ -5,6 +5,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class XClassDefinition implements IGenericDeclaration {
+    public static IClassMemberFilter CurrentClassMemberFilter;
+
+    static {
+        CurrentClassMemberFilter = new IClassMemberFilter.NullClassMemberFilter();
+    }
+
     private final XTypeFactory _typeFactory;
     private final Class _class;
     private final XClass _xClass;
@@ -49,25 +55,25 @@ public class XClassDefinition implements IGenericDeclaration {
         return _typeFactory;
     }
 
-    public Set<String> getReferencedPackageNames() {
+    public Set<String> getReferencedPackages() {
         HashSet<String> result = new HashSet<>();
 
-        result.addAll(getReferencedPackageNamesInDefinition());
+        result.addAll(getReferencedPackagesInDefinition());
 
         for (XField field : getFields())
-            result.addAll(field.getReferencedPackageNames());
+            result.addAll(field.getReferencedPackages());
 
         if (!_xClass.isInterface())
             for (XConstructor constructor : getConstructors())
-                result.addAll(constructor.getReferencedPackageNames());
+                result.addAll(constructor.getReferencedPackages());
 
         for (XMethod method : getDeclaredMethods())
-            result.addAll(method.getReferencedPackageNames());
+            result.addAll(method.getReferencedPackages());
 
         return result;
     }
 
-    public Set<String> getReferencedPackageNamesInDefinition() {
+    public Set<String> getReferencedPackagesInDefinition() {
         HashSet<String> result = new HashSet<>();
 
         if (!_xClass.isInterface()) {
@@ -228,6 +234,7 @@ public class XClassDefinition implements IGenericDeclaration {
                 .stream()
                 .filter(XUtils::isPublic)
                 .map(x -> new XField(classDefinition, x))
+                .filter(CurrentClassMemberFilter::isIncluded)
                 .collect(Collectors.toList());
     }
 
@@ -236,12 +243,16 @@ public class XClassDefinition implements IGenericDeclaration {
                 .stream()
                 .filter(XUtils::isPublic)
                 .map(x -> new XConstructor(classDefinition, x))
+                .filter(CurrentClassMemberFilter::isIncluded)
                 .collect(Collectors.toList());
     }
 
     private static List<XMethod> getPublicDeclaredMethods(XClassDefinition classDefinition) {
         List<Method> result = new LinkedList<>();
-        Method[] declaredMethods = classDefinition._class.getDeclaredMethods();
+        List<Method> declaredMethods = Arrays.asList(classDefinition._class.getDeclaredMethods())
+                .stream()
+                .filter(XUtils::isPublic)
+                .collect(Collectors.toList());
 
         Class superclass = classDefinition._class.getSuperclass();
         if (superclass != null) {
@@ -263,6 +274,7 @@ public class XClassDefinition implements IGenericDeclaration {
                 .stream()
                 .filter(XUtils::isPublic)
                 .map(x -> new XMethod(classDefinition, x))
+                .filter(CurrentClassMemberFilter::isIncluded)
                 .collect(Collectors.toList());
     }
 }

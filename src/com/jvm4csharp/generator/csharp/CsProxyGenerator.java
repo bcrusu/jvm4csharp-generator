@@ -28,7 +28,7 @@ public class CsProxyGenerator implements IProxyGenerator {
     }
 
     private String[] getNamespacesUsed(XClassDefinition clazz, String currentNamespace) {
-        Set<String> referencedPackageNames = clazz.getReferencedPackageNames();
+        Set<String> referencedPackageNames = clazz.getReferencedPackages();
 
         Set<String> set = new HashSet<>();
         set.add("jvm4csharp");

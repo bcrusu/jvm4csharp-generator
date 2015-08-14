@@ -1,9 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Member;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -155,7 +152,7 @@ class XUtils {
         }
     }
 
-    public static boolean getMethodsAreEquivalent(Method method1, Method method2) {
+    static boolean getMethodsAreEquivalent(Method method1, Method method2) {
         if ((!Objects.equals(method1.getName(), method2.getName())))
             return false;
 

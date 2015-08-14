@@ -1,6 +1,5 @@
 package com.jvm4csharp.generator;
 
-import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
 import com.jvm4csharp.generator.reflectx.XClassDefinitionFactory;
 import org.reflections.Reflections;
@@ -12,7 +11,7 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.*;
 
-public class ClassesToGenerateSelector implements Iterable<XClassDefinition> {
+class ClassesToGenerateSelector implements Iterable<XClassDefinition> {
     private final String[] _includedPackages;
     private final boolean _skipOtherPackageReferences;
 
@@ -76,11 +75,14 @@ public class ClassesToGenerateSelector implements Iterable<XClassDefinition> {
                     if (!canGenerate(clazz))
                         continue;
 
-                    System.out.format("Creating class definition for class: '%1s'", clazz.getName());
+                    System.out.println(String.format("Creating class definition for class: '%1s'.", clazz.getName()));
 
                     XClassDefinition classDefinition = XClassDefinitionFactory.createClassDefinition(clazz);
-                    if (_skipOtherPackageReferences && hasOtherPackageReferences(classDefinition))
+                    if (_skipOtherPackageReferences &&
+                            Utils.hasOtherPackageReferences(_includedPackages, classDefinition.getReferencedPackagesInDefinition())) {
+                        System.out.println(String.format("\tClass '%1s' was excluded from generation.", clazz.getName()));
                         continue;
+                    }
 
                     _next = classDefinition;
                     return true;
@@ -101,25 +103,6 @@ public class ClassesToGenerateSelector implements Iterable<XClassDefinition> {
             boolean isPublic = Modifier.isPublic(clazz.getModifiers());
             return isPublic && !clazz.isPrimitive() && !clazz.isArray() &&
                     !clazz.isSynthetic() && !clazz.isLocalClass() && !clazz.isAnonymousClass();
-        }
-
-        private boolean hasOtherPackageReferences(XClassDefinition classDefinition) {
-            Set<String> referencedPackageNames = classDefinition.getReferencedPackageNamesInDefinition();
-
-            for (String referencedPackage : referencedPackageNames) {
-                boolean ok = false;
-                for (String item : _includedPackages) {
-                    if (referencedPackage.startsWith(item)) {
-                        ok = true;
-                        break;
-                    }
-                }
-
-                if (!ok)
-                    return true;
-            }
-
-            return false;
         }
     }
 }

@@ -30,14 +30,15 @@ public class Main {
             System.exit(-1);
         }
 
+        if (_skipOtherPackageReferences)
+            XClassDefinition.CurrentClassMemberFilter = new DefaultClassMemberFilter(_includedPackages);
+
         ClassesToGenerateSelector classesToGenerateSelector = new ClassesToGenerateSelector(_includedPackages, _skipOtherPackageReferences);
         IProxyGenerator generator = getProxyGenerator();
 
         for (XClassDefinition classDefinition : classesToGenerateSelector) {
             GenerationResult generationResult = generator.generate(classDefinition);
             outputWriter.write(generationResult);
-
-            System.out.println();
         }
 
         System.out.println("Done.");

@@ -131,8 +131,9 @@ public class CsTemplateHelper {
                     if (j < parameterNames.length - 1)
                         result.append(", ");
                 }
-                result.append(") {}");
+                result.append(")");
             }
+            result.append(" {}");
         } else {
             if (!clazz.isClass(Object.class) && !clazz.isClass(Throwable.class))
                 result.append(" : base(JavaVoid.Void)");

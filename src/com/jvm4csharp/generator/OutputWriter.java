@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 
-public class OutputWriter {
+class OutputWriter {
     private final String _outputPath;
     private final Set<String> _created;
     private final String _fileHeader;

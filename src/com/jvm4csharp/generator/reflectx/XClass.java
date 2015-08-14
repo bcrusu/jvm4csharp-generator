@@ -128,6 +128,11 @@ public class XClass extends XType implements IGenericDeclaration {
         return _typeParameters;
     }
 
+    @Override
+    public boolean hasTypeParameters() {
+        return getTypeParameters().size() > 0;
+    }
+
     public String getInternalTypeName() {
         return XUtils.getInternalTypeName(_class);
     }

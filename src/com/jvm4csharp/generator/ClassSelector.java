@@ -1,22 +1,19 @@
 package com.jvm4csharp.generator;
 
 import org.reflections.Reflections;
-import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
-import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
+import org.reflections.util.FilterBuilder;
 
-import java.lang.Class;
 import java.lang.reflect.Modifier;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.net.URL;
+import java.util.*;
 
 public class ClassSelector {
-    private final String[] _includePatterns;
+    private final String[] _includePackages;
 
-    public ClassSelector(String[] includePatterns) {
-        _includePatterns = includePatterns;
+    public ClassSelector(String[] includePackages) {
+        _includePackages = includePackages;
     }
 
     public LinkedList<Class> getClasses() {
@@ -26,9 +23,6 @@ public class ClassSelector {
         LinkedList<Class> result = new LinkedList<>();
 
         for (String typeName : allTypes) {
-            if (!isTypeIncluded(typeName))
-                continue;
-
             try {
                 Class clazz = Class.forName(typeName);
                 if (canGenerateClass(clazz))
@@ -41,25 +35,13 @@ public class ClassSelector {
         return result;
     }
 
-    //TODO: better class scanner - ignore non-public classes
-    private static Reflections GetReflections() {
-        List<ClassLoader> classLoadersList = new LinkedList<ClassLoader>();
-        classLoadersList.add(ClasspathHelper.contextClassLoader());
-        classLoadersList.add(ClasspathHelper.staticClassLoader());
-
+    private Reflections GetReflections() {
         Reflections reflections = new Reflections(new ConfigurationBuilder()
-                .setScanners(new SubTypesScanner(false /* don't exclude Object.class */), new ResourcesScanner())
-                .setUrls(ClasspathHelper.forJavaClassPath()));
+                .filterInputsBy(getFilterBuilder())
+                .setScanners(new SubTypesScanner(false))
+                .setUrls(getJavaClassLibraryJars()));
 
         return reflections;
-    }
-
-    private boolean isTypeIncluded(String typeName) {
-        for (String pattern : _includePatterns)
-            if (typeName.startsWith(pattern))   //TODO: use regex
-                return true;
-
-        return false;
     }
 
     private boolean canGenerateClass(Class clazz) {
@@ -67,5 +49,23 @@ public class ClassSelector {
 
         return isPublic && !clazz.isPrimitive() && !clazz.isArray() &&
                 !clazz.isSynthetic() && !clazz.isLocalClass() && !clazz.isAnonymousClass();
+    }
+
+    private static Collection<URL> getJavaClassLibraryJars() {
+        List<URL> result = new ArrayList<>();
+        Class clazz = Object.class;
+        URL location = clazz.getResource('/' + clazz.getName().replace('.', '/') + ".class");
+
+        result.add(location);
+        return result;
+    }
+
+    private FilterBuilder getFilterBuilder(){
+        FilterBuilder result = new FilterBuilder();
+
+        for (String item : _includePackages)
+            result.includePackage(item);
+
+        return result;
     }
 }

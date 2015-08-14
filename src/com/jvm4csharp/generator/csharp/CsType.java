@@ -5,6 +5,8 @@ import com.jvm4csharp.generator.reflectx.*;
 import java.util.List;
 
 public class CsType {
+    public static final String IJavaObjectTypeName = "IJavaObject";
+
     public static String renderUnboundType(XClassDefinition classDefinition) {
         StringBuilder sb = new StringBuilder();
         sb.append(renderSimpleTypeName(classDefinition));
@@ -98,7 +100,7 @@ public class CsType {
             if (typeParameters.size() > 0) {
                 sb.append("<");
                 for (int i = 0; i < typeParameters.size(); i++) {
-                    sb.append("IJavaObject");
+                    sb.append(IJavaObjectTypeName);
 
                     if (i < typeParameters.size() - 1)
                         sb.append(", ");
@@ -109,7 +111,12 @@ public class CsType {
             return sb.toString();
         } else if (xType instanceof XTypeVariable) {
             XTypeVariable xTypeVariable = (XTypeVariable) xType;
-            return xTypeVariable.getName();
+            XType resolvedType = xTypeVariable.getResolvedType();
+
+            if (resolvedType instanceof XTypeVariable)
+                return ((XTypeVariable) resolvedType).getName();
+
+            return renderType(resolvedType);
         } else if (xType instanceof XParameterizedType) {
             XParameterizedType xParameterizedType = (XParameterizedType) xType;
             List<XType> actualTypeArguments = xParameterizedType.getActualTypeArguments();
@@ -129,7 +136,7 @@ public class CsType {
             return sb.toString();
         } else if (xType instanceof XWildcardType) {
             // C# doesn't have a similar feature; will default to Object
-            return "IJavaObject";
+            return IJavaObjectTypeName;
         } else if (xType instanceof XGenericArrayType) {
             XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;
             XType genericComponentType = xGenericArrayType.getGenericComponentType();
@@ -140,9 +147,62 @@ public class CsType {
         throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", xType));
     }
 
+    public static String renderErasedType(XType xType) {
+        if (xType instanceof XClass) {
+            XClass xClass = (XClass) xType;
+
+            if (xClass.isClass(Void.TYPE) || xClass.isPrimitive() || xClass.isArray())
+                throw new IllegalArgumentException(String.format("Cannot render erased type for: '%1s'", xType));
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(renderSimpleTypeName(xClass));
+
+            List<XTypeVariable> typeParameters = xClass.getTypeParameters();
+            if (typeParameters.size() > 0) {
+                sb.append("<");
+                for (int i = 0; i < typeParameters.size(); i++) {
+                    sb.append(renderErasedType(typeParameters.get(i)));
+
+                    if (i < typeParameters.size() - 1)
+                        sb.append(", ");
+                }
+                sb.append(">");
+            }
+
+            return sb.toString();
+        } else if (xType instanceof XTypeVariable) {
+            XTypeVariable xTypeVariable = (XTypeVariable) xType;
+            XType resolvedType = xTypeVariable.getResolvedType();
+
+            if (!(resolvedType instanceof XTypeVariable))
+                return renderType(resolvedType);
+
+            List<XType> bounds = ((XTypeVariable) resolvedType).getBounds();
+            if (bounds.size() > 1)
+                throw new IllegalArgumentException(String.format("Cannot render erased type for type variable with multiple bounds: '%1s'", resolvedType));
+
+            if (bounds.size() == 0)
+                return IJavaObjectTypeName;
+
+            return renderErasedType(bounds.get(0));
+        } else if (xType instanceof XParameterizedType) {
+            XParameterizedType xParameterizedType = (XParameterizedType) xType;
+            return renderSimpleTypeName(xParameterizedType.getRawType());
+        } else if (xType instanceof XWildcardType) {
+            // C# doesn't have a similar feature; will default to Object
+            return IJavaObjectTypeName;
+        } else if (xType instanceof XGenericArrayType) {
+            XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;
+            XType genericComponentType = xGenericArrayType.getGenericComponentType();
+            return "ObjectArray<" + renderErasedType(genericComponentType) + ">";
+        }
+
+        throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", xType));
+    }
+
     public static String renderSimpleTypeName(XClass xClass) {
         if (xClass.isClass(Object.class))
-            return "IJavaObject";
+            return IJavaObjectTypeName;
 
         String result = xClass.getSimpleName();
 

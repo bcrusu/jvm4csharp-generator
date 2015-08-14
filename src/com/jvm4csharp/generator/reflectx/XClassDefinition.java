@@ -4,7 +4,7 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class XClassDefinition implements IGenericDeclaration{
+public class XClassDefinition implements IGenericDeclaration {
     private final XTypeFactory _typeFactory;
     private final Class _class;
     private final XClass _xClass;
@@ -114,6 +114,11 @@ public class XClassDefinition implements IGenericDeclaration{
     @Override
     public List<XTypeVariable> getTypeParameters() {
         return _typeParameters;
+    }
+
+    @Override
+    public boolean hasTypeParameters() {
+        return getTypeParameters().size() > 0;
     }
 
     public List<XType> getActualTypeArguments() {
@@ -227,7 +232,26 @@ public class XClassDefinition implements IGenericDeclaration{
     }
 
     private static List<XMethod> getPublicDeclaredMethods(XClassDefinition classDefinition) {
-        return Arrays.asList(classDefinition._class.getDeclaredMethods())
+        List<Method> result = new LinkedList<>();
+        Method[] declaredMethods = classDefinition._class.getDeclaredMethods();
+
+        Class superclass = classDefinition._class.getSuperclass();
+        if (superclass != null) {
+            Method[] superclassMethods = superclass.getDeclaredMethods();
+            for (Method declaredMethod : declaredMethods) {
+                boolean found = false;
+                for (Method superclassMethod : superclassMethods)
+                    if (XUtils.getMethodsAreEquivalent(declaredMethod, superclassMethod)) {
+                        found = true;
+                        break;
+                    }
+
+                if (!found)
+                    result.add(declaredMethod);
+            }
+        }
+
+        return result
                 .stream()
                 .filter(XUtils::isPublic)
                 .map(x -> new XMethod(classDefinition, x))

@@ -4,6 +4,7 @@ import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
 import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
+import com.jvm4csharp.generator.reflectx.XType;
 
 public class CsClassTemplate implements ICsTemplate {
     private final XClassDefinition _classDefinition;
@@ -15,20 +16,15 @@ public class CsClassTemplate implements ICsTemplate {
     @Override
     public GenerationResult generate() {
         XClass xClass = _classDefinition.getXClass();
-        String internalTypeName = xClass.getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
-        result.append("[JavaProxy(\"");
-        result.append(internalTypeName);
-        result.appendNewLine("\")]");
+        CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
         result.append("public");
         if (xClass.isAbstract())
             result.append(" abstract");
-        if (xClass.isFinal())
-            result.append(" sealed");
-        if (addPartialKeyword())
+        if (CsTemplateHelper.needsPartialKeyword(xClass))
             result.append(" partial");
 
         result.append(" class ");
@@ -42,20 +38,14 @@ public class CsClassTemplate implements ICsTemplate {
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        CsTemplateHelper.renderConstructors(result, _classDefinition);
+        CsTemplateHelper.renderConstructors(result, _classDefinition, false);
         CsTemplateHelper.renderFields(result, _classDefinition);
         CsTemplateHelper.renderMethods(result, _classDefinition);
 
         result.append(TemplateHelper.BLOCK_CLOSE);
 
-        return result;
-    }
+        CsTemplateHelper.renderErasedProxyType(result, _classDefinition);
 
-    private boolean addPartialKeyword() {
-        XClass xClass = _classDefinition.getXClass();
-        if (xClass.isClass(Object.class) || xClass.isClass(Throwable.class) ||
-                xClass.isClass(Class.class) || xClass.isClass(String.class))
-            return true;
-        return false;
+        return result;
     }
 }

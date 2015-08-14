@@ -15,19 +15,14 @@ public class CsEnumTemplate implements ICsTemplate {
     @Override
     public GenerationResult generate() {
         XClass xClass = _classDefinition.getXClass();
-        String internalTypeName = xClass.getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
-        result.append("[JavaProxy(\"");
-        result.append(internalTypeName);
-        result.appendNewLine("\")]");
+        CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
         result.append("public");
         if (xClass.isAbstract())
             result.append(" abstract");
-        else
-            result.append(" sealed");
         result.append(" class ");
         result.append(CsType.renderTypeDefinition(_classDefinition));
 
@@ -38,7 +33,7 @@ public class CsEnumTemplate implements ICsTemplate {
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        CsTemplateHelper.renderConstructors(result, _classDefinition);
+        CsTemplateHelper.renderConstructors(result, _classDefinition, false);
         CsTemplateHelper.renderFields(result, _classDefinition);
         CsTemplateHelper.renderMethods(result, _classDefinition);
 

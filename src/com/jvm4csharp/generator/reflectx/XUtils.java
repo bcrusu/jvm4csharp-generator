@@ -101,4 +101,25 @@ class XUtils {
         result.append(')');
         return result.toString();
     }
+
+    public static boolean getMethodsAreEquivalent(Method method1, Method method2) {
+        if ((method1.getName() != method2.getName()))
+            return false;
+
+        if (!method1.getReturnType().equals(method2.getReturnType()))
+            return false;
+
+        return equalParamTypes(method1.getParameterTypes(), method2.getParameterTypes());
+    }
+
+    private static boolean equalParamTypes(Class[] params1, Class[] params2) {
+        if (params1.length == params2.length) {
+            for (int i = 0; i < params1.length; i++) {
+                if (params1[i] != params2[i])
+                    return false;
+            }
+            return true;
+        }
+        return false;
+    }
 }

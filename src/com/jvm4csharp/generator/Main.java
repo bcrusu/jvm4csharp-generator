@@ -4,13 +4,15 @@ import com.jvm4csharp.generator.csharp.CsProxyGenerator;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
 import com.jvm4csharp.generator.reflectx.XClassDefinitionFactory;
 
+import java.lang.reflect.Modifier;
 import java.util.LinkedList;
+import java.util.Spliterator;
 
 //TODO: get parameter names from javadoc
 public class Main {
     private static String _outputDirectory;
     private static String _namespacePrefix;
-    private static String[] _includePatterns;
+    private static String[] _includePackages;
 
     public static void main(String[] args) {
         if (!ParseArgs(args)) {
@@ -24,18 +26,17 @@ public class Main {
             System.exit(-1);
         }
 
-        ClassSelector classSelector = new ClassSelector(_includePatterns);
+        ClassSelector classDefinitionSelector = new ClassSelector(_includePackages);
 
-        LinkedList<Class> classesToGenerate = classSelector.getClasses();
-
+        LinkedList<Class> classesToGenerate = classDefinitionSelector.getClasses();
         IProxyGenerator generator = getProxyGenerator();
 
         for (Class clazz : classesToGenerate) {
-            XClassDefinition xClassDefinition = XClassDefinitionFactory.createClassDefinition(clazz);
+            XClassDefinition classDefinition = XClassDefinitionFactory.createClassDefinition(clazz);
 
             System.out.format("Generating class: %1s", clazz.getName());
 
-            GenerationResult generationResult = generator.generate(xClassDefinition);
+            GenerationResult generationResult = generator.generate(classDefinition);
             outputWriter.write(generationResult);
 
             System.out.println();
@@ -48,7 +49,7 @@ public class Main {
     private static boolean ParseArgs(String[] args) {
         _outputDirectory = "E:\\work\\github\\jvm4csharp\\jvm4csharp\\generated";
         _namespacePrefix = "jvm4csharp";
-        _includePatterns = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
+        _includePackages = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
         return true;
     }
 

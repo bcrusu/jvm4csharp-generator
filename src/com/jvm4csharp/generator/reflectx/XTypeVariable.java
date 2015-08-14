@@ -11,7 +11,6 @@ public class XTypeVariable extends XType {
     private final XTypeFactory typeFactory;
     private final TypeVariable _typeVariable;
     private String _name;
-    private IGenericDeclaration _genericDeclaration;
     private XType _resolvedType;
 
     XTypeVariable(XTypeFactory typeFactory, TypeVariable typeVariable) {
@@ -22,6 +21,9 @@ public class XTypeVariable extends XType {
 
     @Override
     public Set<String> getReferencedPackageNames() {
+        if (_resolvedType != null)
+            return _resolvedType.getReferencedPackageNames();
+
         return new HashSet<>();
     }
 
@@ -39,7 +41,7 @@ public class XTypeVariable extends XType {
 
         if (_resolvedType == null)
             return XTypeCompareResult.Equal;
-        
+
         if (!_resolvedType.equals(other2._resolvedType))
             return XTypeCompareResult.NotEqual;
 
@@ -59,6 +61,9 @@ public class XTypeVariable extends XType {
     }
 
     void setName(String newName) {
+        if (_resolvedType != null)
+            throw new UnsupportedOperationException();
+
         _name = newName;
     }
 
@@ -66,11 +71,15 @@ public class XTypeVariable extends XType {
         _resolvedType = type;
     }
 
-    XType getResolvedType() {
-        if (_resolvedType != null)
+    public XType getResolvedType() {
+        if (_resolvedType == null)
+            return this;
+
+        if (!(_resolvedType instanceof XTypeVariable))
             return _resolvedType;
 
-        return this;
+        XTypeVariable typeVariable = (XTypeVariable) _resolvedType;
+        return typeVariable.getResolvedType();
     }
 
     public List<XType> getBounds() {

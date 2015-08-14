@@ -54,6 +54,11 @@ public abstract class XExecutable implements IGenericDeclaration {
         return _typeParameters;
     }
 
+    @Override
+    public boolean hasTypeParameters() {
+        return getTypeParameters().size() > 0;
+    }
+
     public abstract String getInternalSignature();
 
     public abstract String getName();

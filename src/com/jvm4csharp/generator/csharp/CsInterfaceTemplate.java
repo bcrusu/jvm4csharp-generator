@@ -17,13 +17,10 @@ public class CsInterfaceTemplate implements ICsTemplate {
     @Override
     public GenerationResult generate() {
         XClass xClass = _classDefinition.getXClass();
-        String internalTypeName = xClass.getInternalTypeName();
 
         GenerationResult result = new GenerationResult();
 
-        result.append("[JavaProxy(\"");
-        result.append(internalTypeName);
-        result.appendNewLine("\")]");
+        CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
         result.append("public interface ");
         result.append(CsType.renderTypeDefinition(_classDefinition));
@@ -42,6 +39,8 @@ public class CsInterfaceTemplate implements ICsTemplate {
                         .collect(Collectors.toList()));
 
         result.append(TemplateHelper.BLOCK_CLOSE);
+
+        CsTemplateHelper.renderErasedProxyType(result, _classDefinition);
 
         return result;
     }

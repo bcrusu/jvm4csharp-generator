@@ -81,11 +81,14 @@ class XTypeFactory {
             if (typeVariable.getGenericDeclaration() != clazz)
                 continue;
 
-            if (!actualTypeArgumentsMap.containsKey(typeVariable.getName()))
+            String typeParameterName = typeVariable.getName();
+            if (!actualTypeArgumentsMap.containsKey(typeParameterName))
                 continue;
 
+            XType actualTypeArgument = actualTypeArgumentsMap.get(typeParameterName);
+
             XTypeVariable xTypeVariable = (XTypeVariable) entry.getValue();
-            xTypeVariable.setResolvedType(entry.getValue());
+            xTypeVariable.setResolvedType(actualTypeArgument);
         }
     }
 

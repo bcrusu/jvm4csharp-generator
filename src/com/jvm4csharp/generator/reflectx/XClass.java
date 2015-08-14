@@ -1,9 +1,7 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class XClass extends XType implements IGenericDeclaration {
@@ -15,21 +13,6 @@ public class XClass extends XType implements IGenericDeclaration {
     XClass(XTypeFactory typeFactory, Class clazz) {
         _typeFactory = typeFactory;
         _class = clazz;
-    }
-
-    @Override
-    public Set<String> getReferencedPackageNames() {
-        HashSet<String> result = new HashSet<>();
-        if (isVoid() || isPrimitive())
-            return result;
-
-        if (isArray()) {
-            result.addAll(getArrayComponentType().getReferencedPackageNames());
-        } else {
-            result.add(_class.getPackage().getName());
-        }
-
-        return result;
     }
 
     @Override

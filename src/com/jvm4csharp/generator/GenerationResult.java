@@ -22,6 +22,17 @@ public class GenerationResult {
         _currentLine = new StringBuilder();
     }
 
+    public void newLines(int count) {
+        if (count < 1)
+            return;
+        
+        newLine();
+
+        for (int i = 0; i < count - 1; i++) {
+            _lines.add("");
+        }
+    }
+
     public void append(String str) {
         _currentLine.append(str);
     }
@@ -46,6 +57,20 @@ public class GenerationResult {
                 newLine();
             newLine();
         }
+    }
+
+    public void ensureEmptyLine() {
+        ensureEmptyLine(true);
+    }
+
+    public void cleanEndLines() {
+        if (_currentLine.length() > 0) {
+            newLine();
+            return;
+        }
+
+        while (_lines.getLast().isEmpty())
+            _lines.removeLast();
     }
 
     public GenerationResultLocation getLocation() {

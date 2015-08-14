@@ -42,6 +42,7 @@ public class CsClassTemplate implements ICsTemplate {
         CsTemplateHelper.renderFields(result, _classDefinition);
         CsTemplateHelper.renderMethods(result, _classDefinition);
 
+        result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);
 
         CsTemplateHelper.renderErasedProxyType(result, _classDefinition);

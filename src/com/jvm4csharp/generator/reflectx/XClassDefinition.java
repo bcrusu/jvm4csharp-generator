@@ -52,6 +52,8 @@ public class XClassDefinition implements IGenericDeclaration {
     public Set<String> getReferencedPackageNames() {
         HashSet<String> result = new HashSet<>();
 
+        result.addAll(getReferencedPackageNamesInDefinition());
+
         for (XField field : getFields())
             result.addAll(field.getReferencedPackageNames());
 
@@ -61,6 +63,12 @@ public class XClassDefinition implements IGenericDeclaration {
 
         for (XMethod method : getDeclaredMethods())
             result.addAll(method.getReferencedPackageNames());
+
+        return result;
+    }
+
+    public Set<String> getReferencedPackageNamesInDefinition() {
+        HashSet<String> result = new HashSet<>();
 
         if (!_xClass.isInterface()) {
             XClassDefinition superclass = getSuperclass();

@@ -37,6 +37,7 @@ public class CsEnumTemplate implements ICsTemplate {
         CsTemplateHelper.renderFields(result, _classDefinition);
         CsTemplateHelper.renderMethods(result, _classDefinition);
 
+        result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);
 
         return result;

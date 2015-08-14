@@ -38,6 +38,7 @@ public class CsInterfaceTemplate implements ICsTemplate {
                         .filter(x -> !x.isStatic() && !x.isDefault())
                         .collect(Collectors.toList()));
 
+        result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);
 
         CsTemplateHelper.renderErasedProxyType(result, _classDefinition);

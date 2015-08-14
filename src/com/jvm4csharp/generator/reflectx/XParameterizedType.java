@@ -22,17 +22,6 @@ public class XParameterizedType extends XType {
     }
 
     @Override
-    public Set<String> getReferencedPackageNames() {
-        HashSet<String> result = new HashSet<>();
-        result.addAll(_rawType.getReferencedPackageNames());
-
-        for (XType xType : getActualTypeArguments())
-            result.addAll(xType.getReferencedPackageNames());
-
-        return result;
-    }
-
-    @Override
     public XTypeCompareResult compareTo(XType other) {
         if (!(other instanceof XParameterizedType))
             return XTypeCompareResult.NotEqual;

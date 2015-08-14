@@ -1,6 +1,12 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 class XUtils {
     static boolean isPublic(int modifier) {
@@ -102,8 +108,55 @@ class XUtils {
         return result.toString();
     }
 
+    public static Set<String> getReferencedPackageNames(XType xType) {
+        Set<String> result = new HashSet<>();
+        getReferencedPackageNames(xType, result, new HashSet<>());
+        return result;
+    }
+
+    private static void getReferencedPackageNames(XType forType, Set<String> packageNames, Set<XType> seenTypes) {
+        if (seenTypes.contains(forType))
+            return;
+        seenTypes.add(forType);
+
+        if (forType instanceof XClass) {
+            XClass clazz = (XClass) forType;
+
+            if (clazz.isVoid() || clazz.isPrimitive())
+                return;
+
+            if (clazz.isArray()) {
+                getReferencedPackageNames(clazz.getArrayComponentType(), packageNames, seenTypes);
+            } else {
+                packageNames.add(clazz.getPackageName());
+            }
+        } else if (forType instanceof XParameterizedType) {
+            XParameterizedType parameterizedType = (XParameterizedType) forType;
+            getReferencedPackageNames(parameterizedType.getRawType(), packageNames, seenTypes);
+
+            for (XType item : parameterizedType.getActualTypeArguments())
+                getReferencedPackageNames(item, packageNames, seenTypes);
+        } else if (forType instanceof XTypeVariable) {
+            XType resolvedType = ((XTypeVariable) forType).getResolvedType();
+
+            if (!(resolvedType instanceof XTypeVariable)) {
+                getReferencedPackageNames(resolvedType, packageNames, seenTypes);
+                return;
+            }
+
+            XTypeVariable typeVariable = (XTypeVariable) resolvedType;
+
+            for (XType bound : typeVariable.getBounds())
+                getReferencedPackageNames(bound, packageNames, seenTypes);
+        } else if (forType instanceof XWildcardType) {
+        } else if (forType instanceof XGenericArrayType) {
+            XGenericArrayType genericArrayType = (XGenericArrayType) forType;
+            getReferencedPackageNames(genericArrayType.getGenericComponentType(), packageNames, seenTypes);
+        }
+    }
+
     public static boolean getMethodsAreEquivalent(Method method1, Method method2) {
-        if ((method1.getName() != method2.getName()))
+        if ((!Objects.equals(method1.getName(), method2.getName())))
             return false;
 
         if (!method1.getReturnType().equals(method2.getReturnType()))

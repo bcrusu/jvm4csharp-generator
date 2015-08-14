@@ -78,23 +78,22 @@ public class CsTemplateHelper {
         List<XConstructor> constructors = classDefinition.getConstructors();
         String csClassName = CsType.renderSimpleTypeName(classDefinition);
 
-        boolean addedChainingCtor = false;
+        GenerationResult tmpResult = new GenerationResult();
+
         if (!xClass.isClass(Object.class) && !xClass.isClass(Throwable.class)) {
-            result.append(TemplateHelper.TAB);
-            result.append("protected ");
-            result.append(csClassName);
-            result.append("(JavaVoid v) : base(v) {}");
-            addedChainingCtor = true;
+            tmpResult.append("protected ");
+            tmpResult.append(csClassName);
+            tmpResult.append("(JavaVoid v) : base(v) {}");
         }
 
         if (!xClass.isAbstract()) {
-            result.ensureEmptyLine(addedChainingCtor && constructors.size() > 0);
-
             for (XConstructor constructor : constructors) {
-                result.newLine();
-                renderConstructor(result, constructor, callMatchingBaseConstructor);
+                tmpResult.ensureEmptyLine();
+                renderConstructor(tmpResult, constructor, callMatchingBaseConstructor);
             }
         }
+
+        tmpResult.renderTo(result, 1);
     }
 
     private static void renderConstructor(GenerationResult result, XConstructor constructor, boolean callMatchingBaseConstructor) {
@@ -114,27 +113,29 @@ public class CsTemplateHelper {
 
         result.append('(');
         for (int i = 0; i < parameterNames.length; i++) {
-            result.append(CsType.renderType(parameterTypes.get(i)));
+            result.append(CsType.renderErasedType(parameterTypes.get(i)));
             result.append(TemplateHelper.SPACE);
             result.append(parameterNames[i]);
 
             if (i < parameterNames.length - 1)
                 result.append(", ");
         }
-        result.append(") : ");
+        result.append(")");
 
         if (callMatchingBaseConstructor) {
-            result.append("base(");
-            for (int j = 0; j < parameterNames.length; j++) {
-                result.append(parameterNames[j]);
+            if (parameterNames.length > 0) {
+                result.append(" : base(");
+                for (int j = 0; j < parameterNames.length; j++) {
+                    result.append(parameterNames[j]);
 
-                if (j < parameterNames.length - 1)
-                    result.append(", ");
+                    if (j < parameterNames.length - 1)
+                        result.append(", ");
+                }
+                result.append(") {}");
             }
-            result.append(") {}");
         } else {
             if (!clazz.isClass(Object.class) && !clazz.isClass(Throwable.class))
-                result.append("base(JavaVoid.Void)");
+                result.append(" : base(JavaVoid.Void)");
 
             result.newLine();
             result.appendNewLine(TemplateHelper.BLOCK_OPEN);
@@ -183,7 +184,7 @@ public class CsTemplateHelper {
         if (!xClass.hasTypeParameters())
             return;
 
-        result.newLine();
+        result.cleanEndLines();
         result.newLine();
         CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
@@ -208,9 +209,9 @@ public class CsTemplateHelper {
         // constructors
         if (!xClass.isInterface()) {
             renderConstructors(result, classDefinition, true);
-            result.newLine();
         }
 
+        result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);
     }
 

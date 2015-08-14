@@ -2,9 +2,8 @@ package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class XTypeVariable extends XType {
@@ -20,14 +19,6 @@ public class XTypeVariable extends XType {
     }
 
     @Override
-    public Set<String> getReferencedPackageNames() {
-        if (_resolvedType != null)
-            return _resolvedType.getReferencedPackageNames();
-
-        return new HashSet<>();
-    }
-
-    @Override
     public XTypeCompareResult compareTo(XType other) {
         if (!(other instanceof XTypeVariable))
             return XTypeCompareResult.NotEqual;
@@ -36,13 +27,7 @@ public class XTypeVariable extends XType {
         if (!_name.equals(other2._name))
             return XTypeCompareResult.NotEqual;
 
-        if (_resolvedType == null && other2._resolvedType != null)
-            return XTypeCompareResult.NotEqual;
-
-        if (_resolvedType == null)
-            return XTypeCompareResult.Equal;
-
-        if (!_resolvedType.equals(other2._resolvedType))
+        if (!Objects.equals(_resolvedType, other2._resolvedType))
             return XTypeCompareResult.NotEqual;
 
         return XTypeCompareResult.Equal;

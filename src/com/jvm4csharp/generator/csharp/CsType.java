@@ -45,7 +45,7 @@ public class CsType {
         if (xType instanceof XClass) {
             XClass xClass = (XClass) xType;
 
-            if (xClass.isClass(Void.TYPE)) {
+            if (xClass.isVoid()) {
                 return "void";
             }
 
@@ -151,8 +151,8 @@ public class CsType {
         if (xType instanceof XClass) {
             XClass xClass = (XClass) xType;
 
-            if (xClass.isClass(Void.TYPE) || xClass.isPrimitive() || xClass.isArray())
-                throw new IllegalArgumentException(String.format("Cannot render erased type for: '%1s'", xType));
+            if (xClass.isVoid() || xClass.isPrimitive() || xClass.isArray())
+                return renderType(xType);
 
             StringBuilder sb = new StringBuilder();
             sb.append(renderSimpleTypeName(xClass));

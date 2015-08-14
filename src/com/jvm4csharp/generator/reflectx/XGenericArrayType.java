@@ -1,8 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.GenericArrayType;
-import java.util.HashSet;
-import java.util.Set;
 
 public class XGenericArrayType extends XType {
     private final XTypeFactory _typeFactory;
@@ -13,13 +11,6 @@ public class XGenericArrayType extends XType {
         _typeFactory = typeFactory;
         _genericArrayType = genericArrayType;
         _getGenericComponentType = typeFactory.getType(genericArrayType.getGenericComponentType());
-    }
-
-    @Override
-    public Set<String> getReferencedPackageNames() {
-        HashSet<String> result = new HashSet<>();
-        result.addAll(getGenericComponentType().getReferencedPackageNames());
-        return result;
     }
 
     @Override

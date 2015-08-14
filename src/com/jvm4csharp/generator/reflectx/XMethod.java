@@ -1,7 +1,6 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.Set;
 
 public class XMethod extends XExecutable {

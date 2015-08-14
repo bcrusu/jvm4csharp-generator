@@ -15,11 +15,6 @@ public class XWildcardType extends XType {
     }
 
     @Override
-    public Set<String> getReferencedPackageNames() {
-        return new HashSet<>();
-    }
-
-    @Override
     public XTypeCompareResult compareTo(XType other) {
         if (!(other instanceof XWildcardType))
             return XTypeCompareResult.NotEqual;

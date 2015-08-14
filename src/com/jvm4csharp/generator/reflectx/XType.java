@@ -3,7 +3,9 @@ package com.jvm4csharp.generator.reflectx;
 import java.util.Set;
 
 public abstract class XType {
-    public abstract Set<String> getReferencedPackageNames();
+    public Set<String> getReferencedPackageNames(){
+        return XUtils.getReferencedPackageNames(this);
+    }
 
     public abstract XTypeCompareResult compareTo(XType other);
 

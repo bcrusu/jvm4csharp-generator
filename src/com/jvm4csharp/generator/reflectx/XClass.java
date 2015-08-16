@@ -16,20 +16,6 @@ public class XClass extends XType implements IGenericDeclaration {
     }
 
     @Override
-    public XTypeCompareResult compareTo(XType other) {
-        if (!(other instanceof XClass))
-            return XTypeCompareResult.NotEqual;
-
-        XClass other2 = (XClass) other;
-        if (_class.equals(other2._class))
-            return XTypeCompareResult.Equal;
-        if (other2._class.isAssignableFrom(_class))
-            return XTypeCompareResult.MoreSpecific;
-
-        return XTypeCompareResult.NotEqual;
-    }
-
-    @Override
     public boolean equals(Object other) {
         if (!(other instanceof XClass))
             return false;
@@ -94,6 +80,10 @@ public class XClass extends XType implements IGenericDeclaration {
 
     public boolean isClass(Class clazz) {
         return _class == clazz;
+    }
+
+    public boolean isAssignableFrom(XClass other) {
+        return _class.isAssignableFrom(other._class);
     }
 
     public XClass getDeclaringClass() {

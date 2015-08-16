@@ -27,7 +27,7 @@ class XTypeFactory {
         return result;
     }
 
-    // rename the colliding type variable by suffixing with "_suffix[counter]"
+    // rename the colliding type variable by suffixing with "_[counter]"
     public void renameCollidingTypeVariablesForMembers(Class clazz) {
         Set<String> classTypeParameterNames = Arrays.asList(clazz.getTypeParameters())
                 .stream()
@@ -51,8 +51,7 @@ class XTypeFactory {
             if (!classTypeParameterNames.contains(typeVariable.getName()))
                 continue;
 
-            String suffix = getCollidingTypeVariableSuffix(genericDeclaration);
-            String newName = getNewTypeVariableName(typeVariable.getName(), suffix);
+            String newName = getNewTypeVariableName(typeVariable.getName());
 
             XTypeVariable xTypeVariable = (XTypeVariable) entry.getValue();
             xTypeVariable.setName(newName);
@@ -113,27 +112,14 @@ class XTypeFactory {
         throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", type));
     }
 
-    private static String getCollidingTypeVariableSuffix(GenericDeclaration genericDeclaration) {
-        if (genericDeclaration instanceof Method)
-            return ((Method) genericDeclaration).getName();
-
-        if (genericDeclaration instanceof Constructor)
-            return ((Constructor) genericDeclaration).getDeclaringClass().getSimpleName();
-
-        throw new UnsupportedOperationException("Cannot resolve suffix for type variable generic declaration.");
-    }
-
-    private static String getNewTypeVariableName(String variableName, String suffix) {
-        if (!variableName.contains("_" + suffix))
-            return variableName + "_" + suffix;
-
-        String[] splits = variableName.split(suffix);
-        if (splits.length == 1)
-            return variableName + "_" + suffix;
+    private static String getNewTypeVariableName(String variableName) {
+        String[] splits = variableName.split(variableName);
+        if (splits.length <= 1)
+            return variableName + "_1";
         else if (splits.length == 2) {
             int counter = Integer.parseInt(splits[1]);
             counter++;
-            return variableName + "_" + suffix + Integer.toString(counter);
+            return variableName + "_" + Integer.toString(counter);
         }
 
         throw new UnsupportedOperationException("Unhandled case");

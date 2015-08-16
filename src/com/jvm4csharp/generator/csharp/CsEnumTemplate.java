@@ -16,7 +16,7 @@ public class CsEnumTemplate implements ICsTemplate {
     public GenerationResult generate() {
         XClass xClass = _classDefinition.getXClass();
 
-        GenerationResult result = new GenerationResult();
+        CsGenerationResult result = new CsGenerationResult();
 
         CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
@@ -24,7 +24,7 @@ public class CsEnumTemplate implements ICsTemplate {
         if (xClass.isAbstract())
             result.append(" abstract");
         result.append(" class ");
-        result.append(CsType.renderTypeDefinition(_classDefinition));
+        CsType.renderTypeDefinition(result, _classDefinition);
 
         CsTemplateHelper.renderBaseClass(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
@@ -35,7 +35,7 @@ public class CsEnumTemplate implements ICsTemplate {
 
         CsTemplateHelper.renderConstructors(result, _classDefinition, false);
         CsTemplateHelper.renderFields(result, _classDefinition);
-        CsTemplateHelper.renderMethods(result, _classDefinition);
+        CsTemplateHelper.renderClassMethods(result, _classDefinition);
 
         result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);

@@ -16,25 +16,16 @@ public class CsInterfaceCompanionTemplate implements ICsTemplate {
 
     @Override
     public GenerationResult generate() {
-        GenerationResult result = new GenerationResult();
+        CsGenerationResult result = new CsGenerationResult();
 
         result.append("public static class ");
-        result.append(CsType.renderSimpleTypeName(_classDefinition));
+        CsType.renderSimpleTypeName(result, _classDefinition);
         result.append("_");
 
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        CsTemplateHelper.renderFields(result,
-                _classDefinition.getFields()
-                        .stream()
-                        .filter(XField::isStatic)
-                        .collect(Collectors.toList()));
-
-        CsTemplateHelper.renderMethods(result, _classDefinition,
-                _classDefinition.getDeclaredMethods()
-                        .stream()
-                        .filter(x -> x.isStatic() || x.isDefault())
-                        .collect(Collectors.toList()));
+        CsTemplateHelper.renderFields(result, _classDefinition);
+        CsTemplateHelper.renderInterfaceMethods(result, _classDefinition, true);
 
         result.append(TemplateHelper.BLOCK_CLOSE);
 

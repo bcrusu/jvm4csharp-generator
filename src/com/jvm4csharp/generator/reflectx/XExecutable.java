@@ -83,7 +83,27 @@ public abstract class XExecutable implements IGenericDeclaration {
             return false;
 
         for (int i = 0; i < thisParameterTypes.size(); i++)
-            if (thisParameterTypes.get(i).compareTo(otherParameterTypes.get(i)) != XTypeCompareResult.Equal)
+            if (!thisParameterTypes.get(i).equals(otherParameterTypes.get(i)))
+                return false;
+
+        return true;
+    }
+
+    public boolean isEquivalent(XExecutable other) {
+        if (other == null)
+            return false;
+
+        if (!getName().equals(other.getName()))
+            return false;
+
+        List<XType> thisParameterTypes = getParameterTypes();
+        List<XType> otherParameterTypes = other.getParameterTypes();
+
+        if (thisParameterTypes.size() != otherParameterTypes.size())
+            return false;
+
+        for (int i = 0; i < thisParameterTypes.size(); i++)
+            if (!thisParameterTypes.get(i).isEquivalent(otherParameterTypes.get(i)))
                 return false;
 
         return true;

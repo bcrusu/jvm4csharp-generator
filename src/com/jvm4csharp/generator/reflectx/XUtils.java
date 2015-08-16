@@ -1,11 +1,15 @@
 package com.jvm4csharp.generator.reflectx;
 
-import java.lang.reflect.*;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.*;
 
 class XUtils {
+    static final int SYNTHETIC = 4096;
+    static final int BRIDGE = 64;
+
     static boolean isPublic(int modifier) {
         return Modifier.isPublic(modifier);
     }
@@ -52,6 +56,11 @@ class XUtils {
 
     static boolean isAbstract(Class clazz) {
         return Modifier.isAbstract(clazz.getModifiers());
+    }
+
+    static boolean isCompilerGenerated(Member member) {
+        int modifiers = member.getModifiers();
+        return ((modifiers & SYNTHETIC) != 0) || ((modifiers & BRIDGE) != 0);
     }
 
     static String getInternalTypeName(Class clazz) {
@@ -105,51 +114,195 @@ class XUtils {
         return result.toString();
     }
 
-    public static Set<String> getReferencedPackageNames(XType xType) {
-        Set<String> result = new HashSet<>();
-        getReferencedPackageNames(xType, result, new HashSet<>());
-        return result;
+    public static Set<String> getReferencedPackageNames(XType type) {
+        class tmp {
+            private final List<XType> _seenTypes;
+            private final Set<String> _packageNames;
+
+            public tmp() {
+                _seenTypes = new LinkedList<>();
+                _packageNames = new HashSet<>();
+            }
+
+            public Set<String> getReferencedPackageNames(XType forType) {
+                work(forType);
+                return _packageNames;
+            }
+
+            private void work(XType forType) {
+                if (forType instanceof XTypeVariable)
+                    forType = ((XTypeVariable) forType).getResolvedType();
+
+                if (_seenTypes.contains(forType))
+                    return;
+                _seenTypes.add(forType);
+
+                if (forType instanceof XClass) {
+                    XClass clazz = (XClass) forType;
+
+                    if (clazz.isVoid() || clazz.isPrimitive())
+                        return;
+
+                    if (clazz.isArray()) {
+                        work(clazz.getArrayComponentType());
+                    } else {
+                        _packageNames.add(clazz.getPackageName());
+                    }
+                } else if (forType instanceof XParameterizedType) {
+                    XParameterizedType parameterizedType = (XParameterizedType) forType;
+                    work(parameterizedType.getRawType());
+
+                    for (XType item : parameterizedType.getActualTypeArguments())
+                        work(item);
+                } else if (forType instanceof XTypeVariable) {
+                    XType resolvedType = ((XTypeVariable) forType).getResolvedType();
+
+                    if (!(resolvedType instanceof XTypeVariable)) {
+                        work(resolvedType);
+                        return;
+                    }
+
+                    XTypeVariable typeVariable = (XTypeVariable) resolvedType;
+
+                    for (XType bound : typeVariable.getBounds())
+                        work(bound);
+                } else if (forType instanceof XWildcardType) {
+                } else if (forType instanceof XGenericArrayType) {
+                    XGenericArrayType genericArrayType = (XGenericArrayType) forType;
+                    work(genericArrayType.getGenericComponentType());
+                }
+            }
+        }
+
+        return new tmp().getReferencedPackageNames(type);
     }
 
-    private static void getReferencedPackageNames(XType forType, Set<String> packageNames, Set<XType> seenTypes) {
-        if (seenTypes.contains(forType))
-            return;
-        seenTypes.add(forType);
+    public static boolean areTypesEquivalent(XType type1, XType type2) {
+        class XTypeTuple {
+            private final XType _item1;
+            private final XType _item2;
 
-        if (forType instanceof XClass) {
-            XClass clazz = (XClass) forType;
-
-            if (clazz.isVoid() || clazz.isPrimitive())
-                return;
-
-            if (clazz.isArray()) {
-                getReferencedPackageNames(clazz.getArrayComponentType(), packageNames, seenTypes);
-            } else {
-                packageNames.add(clazz.getPackageName());
-            }
-        } else if (forType instanceof XParameterizedType) {
-            XParameterizedType parameterizedType = (XParameterizedType) forType;
-            getReferencedPackageNames(parameterizedType.getRawType(), packageNames, seenTypes);
-
-            for (XType item : parameterizedType.getActualTypeArguments())
-                getReferencedPackageNames(item, packageNames, seenTypes);
-        } else if (forType instanceof XTypeVariable) {
-            XType resolvedType = ((XTypeVariable) forType).getResolvedType();
-
-            if (!(resolvedType instanceof XTypeVariable)) {
-                getReferencedPackageNames(resolvedType, packageNames, seenTypes);
-                return;
+            XTypeTuple(XType item1, XType item2) {
+                _item1 = item1;
+                _item2 = item2;
             }
 
-            XTypeVariable typeVariable = (XTypeVariable) resolvedType;
-
-            for (XType bound : typeVariable.getBounds())
-                getReferencedPackageNames(bound, packageNames, seenTypes);
-        } else if (forType instanceof XWildcardType) {
-        } else if (forType instanceof XGenericArrayType) {
-            XGenericArrayType genericArrayType = (XGenericArrayType) forType;
-            getReferencedPackageNames(genericArrayType.getGenericComponentType(), packageNames, seenTypes);
+            @Override
+            public boolean equals(Object other) {
+                if (!(other instanceof XTypeTuple))
+                    return false;
+                XTypeTuple other2 = (XTypeTuple) other;
+                return _item1.equals(other2._item1) && _item2.equals(other2._item2);
+            }
         }
+
+        class tmp {
+            private final List<XTypeTuple> _seenPairs;
+
+            public tmp() {
+                _seenPairs = new LinkedList<>();
+            }
+
+            public boolean areTypesEquivalent(XType type1, XType type2) {
+                if (type1 instanceof XTypeVariable)
+                    type1 = ((XTypeVariable) type1).getResolvedType();
+                if (type2 instanceof XTypeVariable)
+                    type2 = ((XTypeVariable) type2).getResolvedType();
+
+                XTypeTuple tuple = new XTypeTuple(type1, type2);
+                if (_seenPairs.contains(tuple))
+                    return true;
+                _seenPairs.add(tuple);
+
+
+                if (type1 instanceof XClass) {
+                    XClass clazz = (XClass) type1;
+                    return clazz.equals(type2);
+                } else if (type1 instanceof XParameterizedType) {
+                    if (!(type2 instanceof XParameterizedType))
+                        return false;
+
+                    XParameterizedType pType1 = (XParameterizedType) type1;
+                    XParameterizedType pType2 = (XParameterizedType) type2;
+
+                    if (!areTypesEquivalent(pType1.getRawType(), pType2.getRawType()))
+                        return false;
+
+                    List<XType> pType1ActualTypeArguments = pType1.getActualTypeArguments();
+                    List<XType> pType2ActualTypeArguments = pType2.getActualTypeArguments();
+
+                    if (pType1ActualTypeArguments.size() != pType2ActualTypeArguments.size())
+                        return false;
+
+                    for (int i = 0; i < pType1ActualTypeArguments.size(); i++)
+                        if (!areTypesEquivalent(pType1ActualTypeArguments.get(i), pType2ActualTypeArguments.get(i)))
+                            return false;
+
+                    return true;
+                } else if (type1 instanceof XTypeVariable) {
+                    if (!(type2 instanceof XTypeVariable))
+                        return false;
+
+                    XType resolvedType1 = ((XTypeVariable) type1).getResolvedType();
+                    XType resolvedType2 = ((XTypeVariable) type2).getResolvedType();
+
+                    if (resolvedType1 instanceof XTypeVariable && resolvedType2 instanceof XTypeVariable) {
+                        XTypeVariable resolvedVariable1 = (XTypeVariable) resolvedType1;
+                        XTypeVariable resolvedVariable2 = (XTypeVariable) resolvedType2;
+
+                        List<XType> bounds1 = resolvedVariable1.getBounds();
+                        List<XType> bounds2 = resolvedVariable2.getBounds();
+
+                        if (bounds1.size() != bounds2.size())
+                            return false;
+
+                        for (int i = 0; i < bounds1.size(); i++)
+                            if (!areTypesEquivalent(bounds1.get(i), bounds2.get(i)))
+                                return false;
+
+                        return true;
+                    } else
+                        return areTypesEquivalent(resolvedType1, resolvedType2);
+                } else if (type1 instanceof XWildcardType) {
+                    if (!(type2 instanceof XWildcardType))
+                        return false;
+
+                    XWildcardType wildcardType1 = (XWildcardType) type1;
+                    XWildcardType wildcardType2 = (XWildcardType) type2;
+
+                    XType lowerBound1 = wildcardType1.getLowerBound();
+                    XType lowerBound2 = wildcardType2.getLowerBound();
+
+                    if (lowerBound1 == null) {
+                        if (lowerBound2 != null)
+                            return false;
+                    } else if (!areTypesEquivalent(lowerBound1, lowerBound2))
+                        return false;
+
+                    XType upperBound1 = wildcardType1.getUpperBound();
+                    XType upperBound2 = wildcardType2.getUpperBound();
+
+                    if (upperBound1 == null) {
+                        if (upperBound2 != null)
+                            return false;
+                    } else if (!areTypesEquivalent(upperBound1, upperBound2))
+                        return false;
+
+                    return true;
+                } else if (type1 instanceof XGenericArrayType) {
+                    if (!(type2 instanceof XGenericArrayType))
+                        return false;
+
+                    XGenericArrayType genericArrayType1 = (XGenericArrayType) type1;
+                    XGenericArrayType genericArrayType2 = (XGenericArrayType) type2;
+
+                    return areTypesEquivalent(genericArrayType1.getGenericComponentType(), genericArrayType2.getGenericComponentType());
+                } else
+                    throw new IllegalArgumentException();
+            }
+        }
+
+        return new tmp().areTypesEquivalent(type1, type2);
     }
 
     static boolean getMethodsAreEquivalent(Method method1, Method method2) {

@@ -22,21 +22,20 @@ public class CsProxyGenerator implements IProxyGenerator {
         ICsTemplate template = CsTemplateFactory.createTemplate(classDefinition);
         GenerationResultLocation location = getLocation(classDefinition);
 
-        //TODO: generate companion templates
+        GenerationResult result = new GenerationResult(location);
 
-        return generateTemplate(classDefinition, template, location);
+        generateClassDefinition(result, classDefinition, template);
+
+        return result;
     }
 
-    private String[] getNamespacesUsed(XClassDefinition clazz, String currentNamespace) {
-        Set<String> referencedPackageNames = clazz.getReferencedPackages();
+    private String[] getNamespacesUsed(CsGenerationResult result, String currentNamespace) {
+        Set<String> usedNamespaces = result.getUsedNamespaces();
 
         Set<String> set = new HashSet<>();
         set.add("jvm4csharp");
-        set.add("jvm4csharp.ArrayUtils");
 
-        for (String referencedPackageName : referencedPackageNames) {
-            String namespace = CsType.renderNamespace(referencedPackageName);
-
+        for (String namespace : usedNamespaces) {
             if (_namespacePrefix != null && !namespace.startsWith(_namespacePrefix))
                 namespace = _namespacePrefix + "." + namespace;
 
@@ -47,29 +46,39 @@ public class CsProxyGenerator implements IProxyGenerator {
                 .filter(x -> x.compareTo(currentNamespace) != 0)
                 .filter(x -> !currentNamespace.startsWith(x))
                 .sorted()
-                .toArray(i -> new String[i]);
+                .toArray(String[]::new);
     }
 
     private static GenerationResultLocation getLocation(XClassDefinition classDefinition) {
         String packageName = classDefinition.getXClass().getPackageName();
 
-        String name = CsType.renderSimpleTypeName(classDefinition) + ".gen.cs";
+        String name = CsType.getSimpleTypeName(classDefinition.getXClass()) + ".gen.cs";
         String path = packageName.replace(".", File.separator);
 
-        GenerationResultLocation result = new GenerationResultLocation(path, name);
-        return result;
+        return new GenerationResultLocation(path, name);
     }
 
-    private GenerationResult generateTemplate(XClassDefinition classDefinition, ICsTemplate template, GenerationResultLocation location) {
-        String currentNamespace = CsType.renderNamespace(classDefinition.getXClass());
+    private void generateClassDefinition(GenerationResult result, XClassDefinition classDefinition, ICsTemplate template) {
+        String currentNamespace = CsType.getNamespace(classDefinition.getXClass());
         if (_namespacePrefix != null)
             currentNamespace = _namespacePrefix + "." + currentNamespace;
 
-        String[] namespacesUsed = getNamespacesUsed(classDefinition, currentNamespace);
+        CsGenerationResult tmpResult = new CsGenerationResult();
 
-        GenerationResult result = new GenerationResult(location);
+        tmpResult.appendNewLine("// ReSharper disable InconsistentNaming");
+
+        // namespace block
+        tmpResult.append("namespace ");
+        tmpResult.appendNewLine(currentNamespace);
+        tmpResult.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        // render C# type
+        template.generate().renderTo(tmpResult, 1);
+
+        tmpResult.appendNewLine(TemplateHelper.BLOCK_CLOSE);
 
         // using statements
+        String[] namespacesUsed = getNamespacesUsed(tmpResult, currentNamespace);
         if (namespacesUsed.length > 0) {
             for (String namespaceUsed : namespacesUsed) {
                 result.append("using ");
@@ -80,18 +89,6 @@ public class CsProxyGenerator implements IProxyGenerator {
             result.newLine();
         }
 
-        result.appendNewLine("// ReSharper disable InconsistentNaming");
-
-        // namespace block
-        result.append("namespace ");
-        result.appendNewLine(currentNamespace);
-        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
-
-        // render C# type
-        template.generate().renderTo(result, 1);
-
-        result.appendNewLine(TemplateHelper.BLOCK_CLOSE);
-
-        return result;
+        tmpResult.renderTo(result, 0);
     }
 }

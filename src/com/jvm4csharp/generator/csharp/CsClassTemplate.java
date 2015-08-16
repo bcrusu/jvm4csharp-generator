@@ -4,7 +4,6 @@ import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
 import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
-import com.jvm4csharp.generator.reflectx.XType;
 
 public class CsClassTemplate implements ICsTemplate {
     private final XClassDefinition _classDefinition;
@@ -17,7 +16,7 @@ public class CsClassTemplate implements ICsTemplate {
     public GenerationResult generate() {
         XClass xClass = _classDefinition.getXClass();
 
-        GenerationResult result = new GenerationResult();
+        CsGenerationResult result = new CsGenerationResult();
 
         CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
@@ -28,7 +27,7 @@ public class CsClassTemplate implements ICsTemplate {
             result.append(" partial");
 
         result.append(" class ");
-        result.append(CsType.renderTypeDefinition(_classDefinition));
+        CsType.renderTypeDefinition(result, _classDefinition);
 
         CsTemplateHelper.renderTypeParameters(result, _classDefinition);
         CsTemplateHelper.renderBaseClass(result, _classDefinition);
@@ -40,7 +39,7 @@ public class CsClassTemplate implements ICsTemplate {
 
         CsTemplateHelper.renderConstructors(result, _classDefinition, false);
         CsTemplateHelper.renderFields(result, _classDefinition);
-        CsTemplateHelper.renderMethods(result, _classDefinition);
+        CsTemplateHelper.renderClassMethods(result, _classDefinition);
 
         result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);

@@ -1,15 +1,7 @@
 package com.jvm4csharp.generator;
 
 import com.jvm4csharp.generator.csharp.CsProxyGenerator;
-import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
-import com.jvm4csharp.generator.reflectx.XClassDefinitionFactory;
-
-import java.lang.reflect.Modifier;
-import java.net.JarURLConnection;
-import java.util.EnumSet;
-import java.util.LinkedList;
-import java.util.Spliterator;
 
 //TODO: get parameter names from javadoc
 public class Main {
@@ -17,6 +9,7 @@ public class Main {
     private static String _namespacePrefix;
     private static String[] _includedPackages;
     private static boolean _skipOtherPackageReferences;
+    private static boolean _testRun;
 
     public static void main(String[] args) {
         if (!ParseArgs(args)) {
@@ -25,7 +18,7 @@ public class Main {
         }
 
         OutputWriter outputWriter = new OutputWriter(_outputDirectory);
-        if (!outputWriter.isValidOutputDirectory()) {
+        if (!_testRun && !outputWriter.isValidOutputDirectory()) {
             System.out.format("Invalid output path.");
             System.exit(-1);
         }
@@ -38,7 +31,9 @@ public class Main {
 
         for (XClassDefinition classDefinition : classesToGenerateSelector) {
             GenerationResult generationResult = generator.generate(classDefinition);
-            outputWriter.write(generationResult);
+
+            if (!_testRun)
+                outputWriter.write(generationResult);
         }
 
         System.out.println("Done.");
@@ -50,6 +45,7 @@ public class Main {
         _namespacePrefix = "jvm4csharp";
         _includedPackages = new String[]{"java.lang", "java.util", "java.math", "java.io", "java.nio", "java.net", "java.text"};
         _skipOtherPackageReferences = true;
+        _testRun = false;
         return true;
     }
 

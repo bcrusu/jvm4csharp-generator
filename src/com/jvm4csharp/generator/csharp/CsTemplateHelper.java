@@ -1,27 +1,33 @@
 package com.jvm4csharp.generator.csharp;
 
-import com.jvm4csharp.generator.GenerationResult;
 import com.jvm4csharp.generator.TemplateHelper;
 import com.jvm4csharp.generator.reflectx.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class CsTemplateHelper {
     private static Set<String> CsKeywords = new HashSet<>();
 
-    public static void renderJavaProxyAttribute(GenerationResult result, XClass clazz) {
+    public static void renderJavaProxyAttribute(CsGenerationResult result, XClass clazz) {
         result.append("[JavaProxy(\"");
         result.append(clazz.getInternalTypeName());
         result.appendNewLine("\")]");
     }
 
-    public static void renderTypeParameters(GenerationResult result, IGenericDeclaration genericDeclaration) {
+    public static void renderJavaSignature(CsGenerationResult result, String internalTypeName) {
+        result.append("[JavaSignature(\"");
+        result.append(internalTypeName);
+        result.appendNewLine("\")]");
+    }
+
+    public static void renderTypeParameters(CsGenerationResult result, IGenericDeclaration genericDeclaration) {
         List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
 
         if (typeParameters.size() > 0) {
             result.append("<");
             for (int i = 0; i < typeParameters.size(); i++) {
-                result.append(CsType.renderType(typeParameters.get(i)));
+                CsType.renderType(result, typeParameters.get(i));
 
                 if (i < typeParameters.size() - 1)
                     result.append(", ");
@@ -30,7 +36,7 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderImplementedInterfaces(GenerationResult result, XClassDefinition classDefinition) {
+    public static void renderImplementedInterfaces(CsGenerationResult result, XClassDefinition classDefinition) {
         List<XClassDefinition> implementedInterfaces = classDefinition.getImplementedInterfaces();
 
         if (classDefinition.getXClass().isInterface()) {
@@ -44,7 +50,7 @@ public class CsTemplateHelper {
                 result.append(", ");
 
             for (int i = 0; i < implementedInterfaces.size(); i++) {
-                result.append(CsType.renderTypeDefinition(implementedInterfaces.get(i)));
+                CsType.renderTypeDefinition(result, implementedInterfaces.get(i));
 
                 if (i < implementedInterfaces.size() - 1)
                     result.append(", ");
@@ -52,7 +58,7 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderBaseClass(GenerationResult result, XClassDefinition classDefinition) {
+    public static void renderBaseClass(CsGenerationResult result, XClassDefinition classDefinition) {
         if (classDefinition.getXClass().isClass(Object.class))
             return;
 
@@ -67,22 +73,23 @@ public class CsTemplateHelper {
 
         if (superclass.getXClass().isClass(Object.class)) {
             result.append("Object");
+            result.addUsedNamespace("java.lang");
             return;
         }
 
-        result.append(CsType.renderTypeDefinition(superclass));
+        CsType.renderTypeDefinition(result, superclass);
     }
 
-    public static void renderConstructors(GenerationResult result, XClassDefinition classDefinition, boolean callMatchingBaseConstructor) {
+    public static void renderConstructors(CsGenerationResult result, XClassDefinition classDefinition, boolean callMatchingBaseConstructor) {
         XClass xClass = classDefinition.getXClass();
         List<XConstructor> constructors = classDefinition.getConstructors();
-        String csClassName = CsType.renderSimpleTypeName(classDefinition);
 
-        GenerationResult tmpResult = new GenerationResult();
+        CsGenerationResult tmpResult = new CsGenerationResult();
 
         if (!xClass.isClass(Object.class) && !xClass.isClass(Throwable.class)) {
+            tmpResult.ensureEmptyLine();
             tmpResult.append("protected ");
-            tmpResult.append(csClassName);
+            CsType.renderSimpleTypeName(tmpResult, classDefinition);
             tmpResult.append("(JavaVoid v) : base(v) {}");
         }
 
@@ -93,15 +100,17 @@ public class CsTemplateHelper {
             }
         }
 
+        if (!tmpResult.isEmpty())
+            result.ensureEmptyLine();
+
         tmpResult.renderTo(result, 1);
     }
 
-    private static void renderConstructor(GenerationResult result, XConstructor constructor, boolean callMatchingBaseConstructor) {
+    private static void renderConstructor(CsGenerationResult result, XConstructor constructor, boolean callMatchingBaseConstructor) {
         if (constructor.hasTypeParameters())
             throw new UnsupportedOperationException("Generic constructor declarations are not supported.");
 
         String internalSignature = constructor.getInternalSignature();
-        List<XType> parameterTypes = constructor.getParameterTypes();
         String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(constructor);
         XClassDefinition declaringClass = constructor.getDeclaringClass();
         XClass clazz = declaringClass.getXClass();
@@ -109,29 +118,13 @@ public class CsTemplateHelper {
         // signature
         result.append("public");
         result.append(TemplateHelper.SPACE);
-        result.append(CsType.renderSimpleTypeName(declaringClass));
-
-        result.append('(');
-        for (int i = 0; i < parameterNames.length; i++) {
-            result.append(CsType.renderErasedType(parameterTypes.get(i)));
-            result.append(TemplateHelper.SPACE);
-            result.append(parameterNames[i]);
-
-            if (i < parameterNames.length - 1)
-                result.append(", ");
-        }
-        result.append(")");
+        CsType.renderSimpleTypeName(result, clazz);
+        renderExecutableParameters(result, constructor, callMatchingBaseConstructor);
 
         if (callMatchingBaseConstructor) {
             if (parameterNames.length > 0) {
-                result.append(" : base(");
-                for (int j = 0; j < parameterNames.length; j++) {
-                    result.append(parameterNames[j]);
-
-                    if (j < parameterNames.length - 1)
-                        result.append(", ");
-                }
-                result.append(")");
+                result.append(" : base");
+                renderExecutableCallParameters(result, constructor);
             }
             result.append(" {}");
         } else {
@@ -157,7 +150,40 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderTypeParameterConstraints(GenerationResult result, IGenericDeclaration genericDeclaration) {
+    public static void renderExecutableParameters(CsGenerationResult result, XExecutable executable, boolean erasedParameterTypes) {
+        List<XType> parameterTypes = executable.getParameterTypes();
+        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(executable);
+
+        result.append('(');
+        for (int i = 0; i < parameterNames.length; i++) {
+            if (erasedParameterTypes)
+                CsType.renderErasedType(result, parameterTypes.get(i));
+            else
+                CsType.renderType(result, parameterTypes.get(i));
+
+            result.append(TemplateHelper.SPACE);
+            result.append(parameterNames[i]);
+
+            if (i < parameterNames.length - 1)
+                result.append(", ");
+        }
+        result.append(")");
+    }
+
+    public static void renderExecutableCallParameters(CsGenerationResult result, XExecutable executable) {
+        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(executable);
+
+        result.append("(");
+        for (int j = 0; j < parameterNames.length; j++) {
+            result.append(parameterNames[j]);
+
+            if (j < parameterNames.length - 1)
+                result.append(", ");
+        }
+        result.append(")");
+    }
+
+    public static void renderTypeParameterConstraints(CsGenerationResult result, IGenericDeclaration genericDeclaration) {
         List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
         for (XTypeVariable typeParameter : typeParameters) {
             List<XType> bounds = typeParameter.getBounds();
@@ -172,7 +198,7 @@ public class CsTemplateHelper {
 
             for (int i = 0; i < bounds.size(); i++) {
                 XType bound = bounds.get(i);
-                result.append(CsType.renderType(bound));
+                CsType.renderType(result, bound);
 
                 if (i < bounds.size() - 1)
                     result.append(", ");
@@ -180,13 +206,13 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderErasedProxyType(GenerationResult result, XClassDefinition classDefinition) {
+    public static void renderErasedProxyType(CsGenerationResult result, XClassDefinition classDefinition) {
         XClass xClass = classDefinition.getXClass();
         if (!xClass.hasTypeParameters())
             return;
 
         result.cleanEndLines();
-        result.newLine();
+        result.ensureEmptyLine();
         CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
         result.append("public");
@@ -200,9 +226,9 @@ public class CsTemplateHelper {
         else
             result.append(" class ");
 
-        result.append(CsType.renderSimpleTypeName(classDefinition));
+        CsType.renderSimpleTypeName(result, classDefinition);
         result.append(" : ");
-        result.append(CsType.renderErasedType(xClass));
+        CsType.renderErasedType(result, xClass);
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
@@ -216,142 +242,344 @@ public class CsTemplateHelper {
         result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
-    public static void renderMethods(GenerationResult result, XClassDefinition classDefinition) {
+    public static void renderClassMethods(CsGenerationResult result, XClassDefinition classDefinition) {
         class MethodToRenderInfo {
+            public XMethod method;
             public boolean isNew;
             public boolean isExplicit;
+
+            @Override
+            public String toString() {
+                return String.format("%1s; isNew: %2s; isExplicit: %3s", method, isNew, isExplicit);
+            }
         }
 
-        if (classDefinition.getXClass().isInterface()) {
-            renderMethods(result, classDefinition, classDefinition.getDeclaredMethods());
-        } else {
-            List<XClassDefinition> allSuperclassImplementedInterfaces = new LinkedList<>();
-            List<XMethod> superclass2Methods = new LinkedList<>();
+        class tmp {
+            private List<XMethod> _allSuperclassMethods;
+            private List<XMethod> _allImplementedInterfacesMethods;
+            private List<MethodToRenderInfo> _methodsToRender;
 
-            XClassDefinition superclass = classDefinition.getSuperclass();
-            while (superclass != null) {
-                List<XClassDefinition> implementedInterfaces = superclass.getImplementedInterfaces();
-                allSuperclassImplementedInterfaces.addAll(implementedInterfaces);
-
-                for (XClassDefinition implementedInterface : implementedInterfaces)
-                    superclass2Methods.addAll(implementedInterface.getDeclaredMethods());
-
-                superclass2Methods.addAll(superclass.getDeclaredMethods());
-                superclass = superclass.getSuperclass();
+            public tmp() {
+                _allSuperclassMethods = new LinkedList<>();
+                _allImplementedInterfacesMethods = new LinkedList<>();
+                _methodsToRender = new LinkedList<>();
             }
 
-            List<XMethod> allMethods = new LinkedList<>();
-            List<Boolean> allMethodsIsExplicit = new LinkedList<>();
+            public List<MethodToRenderInfo> getMethodsToRender() {
+                _allSuperclassMethods = getSuperclassMethods(classDefinition);
+                _allImplementedInterfacesMethods = getImplementedInterfacesMethods(classDefinition);
 
-            for (XMethod method : classDefinition.getDeclaredMethods()) {
-                allMethods.add(method);
-                allMethodsIsExplicit.add(false);
+                loadDeclaredMethods();
+                processImplementedInterfaceMethods();
+                processSuperclassMethods();
+
+                return _methodsToRender;
             }
 
-            for (XClassDefinition implementedInterface : classDefinition.getImplementedInterfaces()) {
-                if (allSuperclassImplementedInterfaces.contains(implementedInterface))
-                    continue;
+            private void processSuperclassMethods() {
+                List<MethodToRenderInfo> filteredMethodsToRender = new LinkedList<>();
 
-                for (XMethod interfaceMethod : implementedInterface.getDeclaredMethods()) {
+                for (MethodToRenderInfo info : _methodsToRender) {
                     boolean add = true;
-                    boolean isExplicit = false;
 
-                    for (XMethod method : allMethods) {
-                        if (method.equals(interfaceMethod)) {
-                            XTypeCompareResult xTypeCompareResult = method.getReturnType().compareTo(interfaceMethod.getReturnType());
-                            if (xTypeCompareResult == XTypeCompareResult.Equal) {
+                    for (XMethod superclassMethod : _allSuperclassMethods) {
+                        if (info.method.isEquivalent(superclassMethod)) {
+                            XType methodReturnType = info.method.getReturnType();
+                            XType superclassMethodReturnType = superclassMethod.getReturnType();
+
+                            if (methodReturnType.isEquivalent(superclassMethodReturnType)) {
                                 add = false;
                                 break;
                             }
 
-                            isExplicit = true;
+                            info.isNew = true;
                             break;
                         }
                     }
 
-                    if (add) {
-                        allMethods.add(interfaceMethod);
-                        allMethodsIsExplicit.add(isExplicit);
+                    if (add)
+                        filteredMethodsToRender.add(info);
+                }
+
+                _methodsToRender = filteredMethodsToRender;
+            }
+
+            private void processImplementedInterfaceMethods() {
+                for (XMethod interfaceMethod : _allImplementedInterfacesMethods) {
+                    boolean add = true;
+                    boolean isExplicit = false;
+
+                    for (MethodToRenderInfo info : _methodsToRender) {
+                        XMethod method = info.method;
+                        if (method.isEquivalent(interfaceMethod)) {
+                            XType methodReturnType = method.getReturnType();
+                            XType interfaceMethodReturnType = interfaceMethod.getReturnType();
+
+                            boolean isEquivalentReturnType = methodReturnType.isEquivalent(interfaceMethodReturnType);
+
+                            if (classDefinition.getXClass().isInterface()) {
+                                info.isNew = true;
+                            } else {
+                                add = !isEquivalentReturnType;
+                                isExplicit = !isEquivalentReturnType;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    if (add && !classDefinition.getXClass().isInterface()) {
+                        MethodToRenderInfo info = new MethodToRenderInfo();
+                        info.method = interfaceMethod;
+                        info.isExplicit = isExplicit;
+                        _methodsToRender.add(info);
                     }
                 }
             }
 
-            List<XMethod> methodsToRender = new LinkedList<>();
-            List<MethodToRenderInfo> methodsToRenderInfo = new LinkedList<>();
+            private void loadDeclaredMethods() {
+                for (XMethod method : classDefinition.getDeclaredMethods()) {
+                    if (method.isStatic() && classDefinition.getXClass().isInterface())
+                        continue;
 
-            // calculate isNew
-            for (int i = 0; i < allMethods.size(); i++) {
-                XMethod method = allMethods.get(i);
-                boolean add = true;
-                boolean isNew = false;
-
-                for (XMethod superclassMethod : superclass2Methods) {
-                    if (method.equals(superclassMethod)) {
-                        XTypeCompareResult xTypeCompareResult = method.getReturnType().compareTo(superclassMethod.getReturnType());
-                        if (xTypeCompareResult == XTypeCompareResult.Equal)
-                            add = false;
-                        else
-                            isNew = true;
-
-                        break;
-                    }
-                }
-
-                if (add) {
-                    methodsToRender.add(method);
-                    MethodToRenderInfo methodRenderInfo = new MethodToRenderInfo();
-                    methodRenderInfo.isNew = isNew;
-                    methodRenderInfo.isExplicit = allMethodsIsExplicit.get(i);
-                    methodsToRenderInfo.add(methodRenderInfo);
+                    MethodToRenderInfo info = new MethodToRenderInfo();
+                    info.method = method;
+                    info.isExplicit = false;
+                    info.isNew = false;
+                    _methodsToRender.add(info);
                 }
             }
 
-            // render
-            result.ensureEmptyLine(methodsToRender.size() > 0);
-
-            for (int i = 0; i < methodsToRender.size(); i++) {
-                XMethod method = methodsToRender.get(i);
-                MethodToRenderInfo methodToRenderInfo = methodsToRenderInfo.get(i);
-
-                ICsTemplate template = new CsMethodTemplate(method, classDefinition, methodToRenderInfo.isNew, methodToRenderInfo.isExplicit);
-                template.generate().renderTo(result, 1);
-
-                if (i < methodsToRender.size() - 1) {
-                    result.newLine();
+            private List<XMethod> getSuperclassMethods(XClassDefinition classDefinition) {
+                if (classDefinition.getXClass().isInterface()) {
+                    XClassDefinition objectClassDefinition = XClassDefinitionFactory.createClassDefinition(Object.class);
+                    return objectClassDefinition.getDeclaredMethods();
                 }
+
+                List<XMethod> result = new LinkedList<>();
+
+                XClassDefinition superclass = classDefinition.getSuperclass();
+                while (superclass != null) {
+                    result.addAll(superclass.getDeclaredMethods());
+                    for (XClassDefinition implementedInterface : superclass.getImplementedInterfaces())
+                        result.addAll(getImplementedInterfacesMethods(implementedInterface));
+
+                    superclass = superclass.getSuperclass();
+                }
+
+                return result;
+            }
+
+            private List<XMethod> getImplementedInterfacesMethods(XClassDefinition classDefinition) {
+                List<XMethod> result = new LinkedList<>();
+
+                for (XClassDefinition implementedInterface : classDefinition.getImplementedInterfaces()) {
+                    for (XMethod method : implementedInterface.getDeclaredMethods())
+                        if (!method.isStatic() && !result.contains(method))
+                            result.add(method);
+
+                    result.addAll(getImplementedInterfacesMethods(implementedInterface));
+                }
+
+                return result;
             }
         }
+
+        List<MethodToRenderInfo> methodsToRender = new tmp().getMethodsToRender();
+
+        // render
+        CsGenerationResult tmpResult = new CsGenerationResult();
+
+        for (MethodToRenderInfo methodToRenderInfo : methodsToRender) {
+            tmpResult.ensureEmptyLine();
+            renderMethod(tmpResult, classDefinition, methodToRenderInfo.method, methodToRenderInfo.isExplicit, methodToRenderInfo.isNew);
+        }
+
+        if (!tmpResult.isEmpty())
+            result.ensureEmptyLine();
+
+        tmpResult.renderTo(result, 1);
     }
 
-    public static void renderMethods(GenerationResult result, XClassDefinition classDefinition, List<XMethod> methods) {
-        result.ensureEmptyLine(methods.size() > 0);
+    public static void renderInterfaceMethods(CsGenerationResult result, XClassDefinition classDefinition, boolean forCompanionClass) {
+        if (!classDefinition.getXClass().isInterface())
+            throw new IllegalArgumentException("Expected interface definition.");
 
-        for (int i = 0; i < methods.size(); i++) {
-            XMethod method = methods.get(i);
-            ICsTemplate template = new CsMethodTemplate(method, classDefinition, false, false);
-            template.generate().renderTo(result, 1);
+        List<XMethod> methodsToRender = classDefinition.getDeclaredMethods();
 
-            if (i < methods.size() - 1) {
-                result.newLine();
+        if (forCompanionClass)
+            methodsToRender = methodsToRender.stream()
+                    .filter(XMethod::isStatic)
+                    .collect(Collectors.toList());
+        else
+            methodsToRender = methodsToRender.stream()
+                    .filter(x -> !x.isStatic())
+                    .collect(Collectors.toList());
+
+        CsGenerationResult tmpResult = new CsGenerationResult();
+
+        for (XMethod aMethodsToRender : methodsToRender) {
+            tmpResult.ensureEmptyLine();
+            renderMethod(tmpResult, classDefinition, aMethodsToRender, false, false);
+        }
+
+        if (!tmpResult.isEmpty())
+            result.ensureEmptyLine();
+
+        tmpResult.renderTo(result, 1);
+    }
+
+    //TODO: use C# 'params' keyword for var args
+    public static void renderMethod(CsGenerationResult result, XClassDefinition classDefinition,
+                                    XMethod method, boolean isExplicit, boolean isNew) {
+        String internalSignature = method.getInternalSignature();
+        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(method);
+
+        renderJavaSignature(result, internalSignature);
+
+        if (!isExplicit && !classDefinition.getXClass().isInterface())
+            result.append("public ");
+        if (isNew)
+            result.append("new ");
+        if (method.isStatic())
+            result.append("static ");
+
+        CsType.renderType(result, method.getReturnType());
+        result.append(TemplateHelper.SPACE);
+        if (isExplicit) {
+            CsType.renderTypeDefinition(result, method.getDeclaringClass());
+            result.append(".");
+        }
+        result.append(CsTemplateHelper.escapeCsKeyword(method.getName()));
+
+        renderTypeParameters(result, method);
+        renderExecutableParameters(result, method, false);
+
+        if (!isExplicit)
+            renderTypeParameterConstraints(result, method);
+
+        // body
+        if (classDefinition.getXClass().isInterface()) {
+            result.append(";");
+        } else {
+            result.newLine();
+            result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+            result.append(TemplateHelper.TAB);
+            if (!method.isVoidReturnType())
+                result.append("return ");
+
+            result.append("Call");
+            if (method.isStatic())
+                result.append("Static");
+            result.append("Method");
+
+            if (!method.isVoidReturnType()) {
+                result.append("<");
+                CsType.renderType(result, method.getReturnType());
+                result.append(">");
             }
+
+            result.append('(');
+            if (method.isStatic()) {
+                result.append("typeof(");
+                CsType.renderTypeDefinition(result, method.getDeclaringClass());
+                result.append("), ");
+            }
+            result.append("\"");
+            result.append(method.getName());
+            result.append("\", \"");
+            result.append(internalSignature);
+            result.append("\"");
+
+            for (String csParameterName : parameterNames) {
+                result.append(", ");
+                result.append(csParameterName);
+            }
+
+            result.append(");");
+
+            result.newLine();
+            result.append(TemplateHelper.BLOCK_CLOSE);
         }
     }
 
-    public static void renderFields(GenerationResult result, List<XField> fields) {
-        result.ensureEmptyLine(fields.size() > 0);
+    public static void renderFields(CsGenerationResult result, XClassDefinition classDefinition) {
+        List<XField> fields = classDefinition.getFields();
 
-        for (int i = 0; i < fields.size(); i++) {
-            XField field = fields.get(i);
-            ICsTemplate template = new CsPropertyTemplate(field);
-            template.generate().renderTo(result, 1);
+        CsGenerationResult tmpResult = new CsGenerationResult();
 
-            if (i < fields.size() - 1)
-                result.newLine();
+        for (XField field : fields) {
+            tmpResult.ensureEmptyLine();
+            renderField(tmpResult, field);
         }
+
+        if (!tmpResult.isEmpty())
+            result.ensureEmptyLine();
+
+        tmpResult.renderTo(result, 1);
     }
 
-    public static void renderFields(GenerationResult result, XClassDefinition classDefinition) {
-        renderFields(result, classDefinition.getFields());
+    private static void renderField(CsGenerationResult result, XField field) {
+        String internalTypeName = field.getInternalTypeName();
+
+        renderJavaSignature(result, internalTypeName);
+
+        result.append("public ");
+        if (field.isStatic())
+            result.append("static ");
+
+        CsType.renderType(result, field.getType());
+        result.append(TemplateHelper.SPACE);
+        result.append(CsTemplateHelper.escapeCsKeyword(field.getName()));
+
+        result.newLine();
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        // getter
+        result.append(TemplateHelper.TAB);
+        result.append("get { return Get");
+        if (field.isStatic())
+            result.append("Static");
+        result.append("Field<");
+        CsType.renderType(result, field.getType());
+        result.append(">(");
+
+        if (field.isStatic()) {
+            result.append("typeof(");
+            CsType.renderUnboundType(result, field.getDeclaringClass());
+            result.append("), ");
+        }
+
+        result.append("\"");
+        result.append(field.getName());
+        result.append("\", \"");
+        result.append(internalTypeName);
+        result.append("\"); }");
+
+        // setter
+        if (!field.isFinal()) {
+            result.newLine();
+            result.append(TemplateHelper.TAB);
+
+            result.append("set { Set");
+            if (field.isStatic())
+                result.append("Static");
+            result.append("Field(");
+            if (field.isStatic()) {
+                result.append("typeof(");
+                CsType.renderUnboundType(result, field.getDeclaringClass());
+                result.append("), ");
+            }
+            result.append("\"");
+            result.append(field.getName());
+            result.append("\", \"");
+            result.append(internalTypeName);
+            result.append("\", value); }");
+        }
+
+        result.newLine();
+        result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
     public static String[] getEscapedParameterNames(XExecutable executable) {
@@ -372,10 +600,8 @@ public class CsTemplateHelper {
     }
 
     public static boolean needsPartialKeyword(XClass clazz) {
-        if (clazz.isClass(Object.class) || clazz.isClass(Throwable.class) ||
-                clazz.isClass(Class.class) || clazz.isClass(String.class))
-            return true;
-        return false;
+        return clazz.isClass(Object.class) || clazz.isClass(Throwable.class) ||
+                clazz.isClass(Class.class) || clazz.isClass(String.class);
     }
 
     static {

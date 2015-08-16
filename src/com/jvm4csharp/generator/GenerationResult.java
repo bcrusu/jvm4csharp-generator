@@ -3,9 +3,9 @@ package com.jvm4csharp.generator;
 import java.util.LinkedList;
 
 public class GenerationResult {
-    private final LinkedList<String> _lines;
-    private final GenerationResultLocation _location;
-    private StringBuilder _currentLine;
+    protected final LinkedList<String> _lines;
+    protected final GenerationResultLocation _location;
+    protected StringBuilder _currentLine;
 
     public GenerationResult(GenerationResultLocation location) {
         _lines = new LinkedList<>();
@@ -22,17 +22,6 @@ public class GenerationResult {
         _currentLine = new StringBuilder();
     }
 
-    public void newLines(int count) {
-        if (count < 1)
-            return;
-        
-        newLine();
-
-        for (int i = 0; i < count - 1; i++) {
-            _lines.add("");
-        }
-    }
-
     public void append(String str) {
         _currentLine.append(str);
     }
@@ -44,33 +33,6 @@ public class GenerationResult {
     public void appendNewLine(String str) {
         _currentLine.append(str);
         newLine();
-    }
-
-    public void appendNewLine(char c) {
-        _currentLine.append(c);
-        newLine();
-    }
-
-    public void ensureEmptyLine(boolean condition) {
-        if (condition) {
-            if (_currentLine.length() > 0)
-                newLine();
-            newLine();
-        }
-    }
-
-    public void ensureEmptyLine() {
-        ensureEmptyLine(true);
-    }
-
-    public void cleanEndLines() {
-        if (_currentLine.length() > 0) {
-            newLine();
-            return;
-        }
-
-        while (_lines.getLast().isEmpty())
-            _lines.removeLast();
     }
 
     public GenerationResultLocation getLocation() {
@@ -108,5 +70,15 @@ public class GenerationResult {
         }
 
         return sb.toString();
+    }
+
+    public boolean isEmpty() {
+        if (_currentLine.length() > 0)
+            return false;
+
+        if (_lines.size() > 0)
+            return false;
+
+        return true;
     }
 }

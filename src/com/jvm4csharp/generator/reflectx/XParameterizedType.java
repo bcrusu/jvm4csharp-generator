@@ -1,10 +1,7 @@
 package com.jvm4csharp.generator.reflectx;
 
 import java.lang.reflect.ParameterizedType;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class XParameterizedType extends XType {
@@ -22,25 +19,25 @@ public class XParameterizedType extends XType {
     }
 
     @Override
-    public XTypeCompareResult compareTo(XType other) {
+    public boolean equals(Object other) {
         if (!(other instanceof XParameterizedType))
-            return XTypeCompareResult.NotEqual;
+            return false;
 
         XParameterizedType other2 = (XParameterizedType) other;
-        if (_rawType.compareTo(other2._rawType) != XTypeCompareResult.Equal)
-            return XTypeCompareResult.NotEqual;
+        if (!_rawType.equals(other2._rawType))
+            return false;
 
         List<XType> thisActualTypeArguments = getActualTypeArguments();
         List<XType> otherActualTypeArguments = other2.getActualTypeArguments();
 
         if (thisActualTypeArguments.size() != otherActualTypeArguments.size())
-            return XTypeCompareResult.NotEqual;
+            return false;
 
         for (int i = 0; i < thisActualTypeArguments.size(); i++)
-            if (thisActualTypeArguments.get(i).compareTo(otherActualTypeArguments.get(i)) != XTypeCompareResult.Equal)
-                return XTypeCompareResult.NotEqual;
+            if (!thisActualTypeArguments.get(i).equals(otherActualTypeArguments.get(i)))
+                return false;
 
-        return XTypeCompareResult.Equal;
+        return true;
     }
 
     @Override

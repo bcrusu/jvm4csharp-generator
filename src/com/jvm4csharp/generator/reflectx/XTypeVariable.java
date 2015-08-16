@@ -1,5 +1,8 @@
 package com.jvm4csharp.generator.reflectx;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.Method;
 import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
 import java.util.List;
@@ -7,38 +10,45 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class XTypeVariable extends XType {
-    private final XTypeFactory typeFactory;
+    private final XTypeFactory _typeFactory;
     private final TypeVariable _typeVariable;
     private String _name;
     private XType _resolvedType;
 
     XTypeVariable(XTypeFactory typeFactory, TypeVariable typeVariable) {
-        this.typeFactory = typeFactory;
+        _typeFactory = typeFactory;
         _typeVariable = typeVariable;
         _name = typeVariable.getName();
     }
 
     @Override
-    public XTypeCompareResult compareTo(XType other) {
+    public boolean equals(Object other) {
         if (!(other instanceof XTypeVariable))
-            return XTypeCompareResult.NotEqual;
+            return false;
 
-        XTypeVariable other2 = (XTypeVariable) other;
-        if (!_name.equals(other2._name))
-            return XTypeCompareResult.NotEqual;
+        XType thisResolvedType = getResolvedType();
+        XType otherResolvedType = ((XTypeVariable) other).getResolvedType();
 
-        if (!Objects.equals(_resolvedType, other2._resolvedType))
-            return XTypeCompareResult.NotEqual;
+        if (thisResolvedType instanceof XTypeVariable && otherResolvedType instanceof XTypeVariable) {
+            XTypeVariable thisResolvedVariable = (XTypeVariable) thisResolvedType;
+            XTypeVariable otherResolvedVariable = (XTypeVariable) otherResolvedType;
 
-        return XTypeCompareResult.Equal;
+            if (!thisResolvedVariable._name.equals(otherResolvedVariable._name))
+                return false;
+
+            return thisResolvedVariable._typeVariable.getGenericDeclaration().equals(otherResolvedVariable._typeVariable.getGenericDeclaration());
+        } else
+            return Objects.equals(thisResolvedType, otherResolvedType);
     }
 
     @Override
     protected String getDisplayName() {
-        if (_resolvedType != null)
-            return _resolvedType.getDisplayName();
+        String displayName = _name + "(" + getGenericDeclarationDisplayName(_typeVariable.getGenericDeclaration()) + ")";
 
-        return _name;
+        if (_resolvedType != null)
+            return displayName + "->" + _resolvedType.getDisplayName();
+
+        return displayName;
     }
 
     public String getName() {
@@ -70,7 +80,20 @@ public class XTypeVariable extends XType {
     public List<XType> getBounds() {
         return Arrays.asList(_typeVariable.getBounds())
                 .stream()
-                .map(typeFactory::getType)
+                .map(_typeFactory::getType)
                 .collect(Collectors.toList());
+    }
+
+    private static String getGenericDeclarationDisplayName(GenericDeclaration genericDeclaration) {
+        if (genericDeclaration instanceof Class)
+            return "class " + ((Class) genericDeclaration).getSimpleName();
+
+        if (genericDeclaration instanceof Method)
+            return "method " + ((Method) genericDeclaration).getName();
+
+        if (genericDeclaration instanceof Constructor)
+            return "constructor " + ((Constructor) genericDeclaration).getDeclaringClass().getSimpleName();
+
+        throw new UnsupportedOperationException("Cannot resolve suffix for type variable generic declaration.");
     }
 }

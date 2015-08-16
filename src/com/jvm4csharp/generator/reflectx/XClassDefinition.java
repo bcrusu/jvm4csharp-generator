@@ -110,7 +110,7 @@ public class XClassDefinition implements IGenericDeclaration {
             return false;
 
         for (int i = 0; i < thisActualTypeArguments.size(); i++)
-            if (thisActualTypeArguments.get(i).compareTo(otherActualTypeArguments.get(i)) != XTypeCompareResult.Equal)
+            if (!thisActualTypeArguments.get(i).equals(otherActualTypeArguments.get(i)))
                 return false;
 
         return true;
@@ -189,17 +189,17 @@ public class XClassDefinition implements IGenericDeclaration {
         for (int i = 0; i < interfaces.length; i++) {
             Class currentInterface = interfaces[i];
 
-            if (XUtils.isPublic(currentInterface))
+            if (XUtils.isPublic(currentInterface)) {
                 publicInterfaces.add(XClassDefinitionFactory.createClassDefinition(_typeFactory, genericInterfaces[i]));
-            else {
+            } else {
                 // expand public interfaces from private implemented interface
                 Collection<XClassDefinition> publicInterfacesFromPrivateInterface = getPublicImplementedInterfaces(currentInterface);
-
-                if (genericInterfaces[i] instanceof ParameterizedType)
-                    _typeFactory.replaceActualTypeArguments((ParameterizedType) genericInterfaces[i]);
-
                 publicInterfaces.addAll(publicInterfacesFromPrivateInterface);
             }
+
+            // replace actual arguments for type variables
+            if (genericInterfaces[i] instanceof ParameterizedType)
+                _typeFactory.replaceActualTypeArguments((ParameterizedType) genericInterfaces[i]);
         }
 
         // expand public interfaces from private superclass
@@ -252,27 +252,31 @@ public class XClassDefinition implements IGenericDeclaration {
         List<Method> declaredMethods = Arrays.asList(classDefinition._class.getDeclaredMethods())
                 .stream()
                 .filter(XUtils::isPublic)
+                .filter(x -> !XUtils.isCompilerGenerated(x))
                 .collect(Collectors.toList());
 
-        Class superclass = classDefinition._class.getSuperclass();
-        if (superclass != null) {
-            Method[] superclassMethods = superclass.getDeclaredMethods();
-            for (Method declaredMethod : declaredMethods) {
-                boolean found = false;
-                for (Method superclassMethod : superclassMethods)
-                    if (XUtils.getMethodsAreEquivalent(declaredMethod, superclassMethod)) {
-                        found = true;
-                        break;
-                    }
+        if (classDefinition.getXClass().isInterface() || classDefinition.getXClass().isClass(Object.class)) {
+            result.addAll(declaredMethods);
+        } else {
+            Class superclass = classDefinition._class.getSuperclass();
+            if (superclass != null) {
+                Method[] superclassMethods = superclass.getDeclaredMethods();
+                for (Method declaredMethod : declaredMethods) {
+                    boolean found = false;
+                    for (Method superclassMethod : superclassMethods)
+                        if (XUtils.getMethodsAreEquivalent(declaredMethod, superclassMethod)) {
+                            found = true;
+                            break;
+                        }
 
-                if (!found)
-                    result.add(declaredMethod);
+                    if (!found)
+                        result.add(declaredMethod);
+                }
             }
         }
 
         return result
                 .stream()
-                .filter(XUtils::isPublic)
                 .map(x -> new XMethod(classDefinition, x))
                 .filter(CurrentClassMemberFilter::isIncluded)
                 .collect(Collectors.toList());

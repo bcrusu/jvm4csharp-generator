@@ -5,8 +5,6 @@ import com.jvm4csharp.generator.TemplateHelper;
 import com.jvm4csharp.generator.reflectx.XClass;
 import com.jvm4csharp.generator.reflectx.XClassDefinition;
 
-import java.util.stream.Collectors;
-
 public class CsInterfaceTemplate implements ICsTemplate {
     private final XClassDefinition _classDefinition;
 
@@ -18,12 +16,12 @@ public class CsInterfaceTemplate implements ICsTemplate {
     public GenerationResult generate() {
         XClass xClass = _classDefinition.getXClass();
 
-        GenerationResult result = new GenerationResult();
+        CsGenerationResult result = new CsGenerationResult();
 
         CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
 
         result.append("public interface ");
-        result.append(CsType.renderTypeDefinition(_classDefinition));
+        CsType.renderTypeDefinition(result, _classDefinition);
 
         CsTemplateHelper.renderTypeParameters(result, _classDefinition);
         CsTemplateHelper.renderImplementedInterfaces(result, _classDefinition);
@@ -32,11 +30,7 @@ public class CsInterfaceTemplate implements ICsTemplate {
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-        CsTemplateHelper.renderMethods(result, _classDefinition,
-                _classDefinition.getDeclaredMethods()
-                        .stream()
-                        .filter(x -> !x.isStatic() && !x.isDefault())
-                        .collect(Collectors.toList()));
+        CsTemplateHelper.renderClassMethods(result, _classDefinition);
 
         result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);

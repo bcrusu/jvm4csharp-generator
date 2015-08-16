@@ -21,6 +21,7 @@ public class XClassDefinition implements IGenericDeclaration {
     private final List<XTypeVariable> _typeParameters;
     private XClassDefinition _superclass;
     private List<XClassDefinition> _implementedInterfaces;
+    private List<XClassDefinition> _declaredClasses;
 
     private XClassDefinition(XTypeFactory typeFactory, Class clazz, Type[] actualTypeArguments) {
         _typeFactory = typeFactory;
@@ -158,6 +159,17 @@ public class XClassDefinition implements IGenericDeclaration {
         if (_superclass == null)
             _superclass = getPublicSuperclass(_class);
         return _superclass;
+    }
+
+    public List<XClassDefinition> getDeclaredClasses() {
+        if (_declaredClasses == null)
+            _declaredClasses = Arrays.asList(_class.getDeclaredClasses())
+                    .stream()
+                    .filter(XUtils::isPublic)
+                    .map(XClassDefinitionFactory::createClassDefinition)
+                    .collect(Collectors.toList());
+
+        return _declaredClasses;
     }
 
     public List<XClassDefinition> getImplementedInterfaces() {

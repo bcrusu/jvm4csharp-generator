@@ -19,12 +19,11 @@ public class CsProxyGenerator implements IProxyGenerator {
 
     @Override
     public GenerationResult generate(XClassDefinition classDefinition) {
-        ICsTemplate template = CsTemplateFactory.createTemplate(classDefinition);
         GenerationResultLocation location = getLocation(classDefinition);
 
-        GenerationResult result = new GenerationResult(location);
+        CsGenerationResult result = new CsGenerationResult(location);
 
-        generateClassDefinition(result, classDefinition, template);
+        generateClassDefinition(result, classDefinition);
 
         return result;
     }
@@ -52,33 +51,22 @@ public class CsProxyGenerator implements IProxyGenerator {
     private static GenerationResultLocation getLocation(XClassDefinition classDefinition) {
         String packageName = classDefinition.getXClass().getPackageName();
 
-        String name = CsType.getSimpleTypeName(classDefinition.getXClass()) + ".gen.cs";
+        String name = classDefinition.getXClass().getSimpleName() + ".gen.cs";
         String path = packageName.replace(".", File.separator);
 
         return new GenerationResultLocation(path, name);
     }
 
-    private void generateClassDefinition(GenerationResult result, XClassDefinition classDefinition, ICsTemplate template) {
+    private void generateClassDefinition(CsGenerationResult result, XClassDefinition classDefinition) {
         String currentNamespace = CsType.getNamespace(classDefinition.getXClass());
         if (_namespacePrefix != null)
             currentNamespace = _namespacePrefix + "." + currentNamespace;
 
-        CsGenerationResult tmpResult = new CsGenerationResult();
-
-        tmpResult.appendNewLine("// ReSharper disable InconsistentNaming");
-
-        // namespace block
-        tmpResult.append("namespace ");
-        tmpResult.appendNewLine(currentNamespace);
-        tmpResult.appendNewLine(TemplateHelper.BLOCK_OPEN);
-
-        // render C# type
-        template.generate().renderTo(tmpResult, 1);
-
-        tmpResult.appendNewLine(TemplateHelper.BLOCK_CLOSE);
+        CsGenerationResult classRenderResult = new CsGenerationResult();
+        CsTemplateHelper.renderClassDefinition(classRenderResult, classDefinition);
 
         // using statements
-        String[] namespacesUsed = getNamespacesUsed(tmpResult, currentNamespace);
+        String[] namespacesUsed = getNamespacesUsed(classRenderResult, currentNamespace);
         if (namespacesUsed.length > 0) {
             for (String namespaceUsed : namespacesUsed) {
                 result.append("using ");
@@ -89,6 +77,16 @@ public class CsProxyGenerator implements IProxyGenerator {
             result.newLine();
         }
 
-        tmpResult.renderTo(result, 0);
+        result.appendNewLine("// ReSharper disable InconsistentNaming");
+
+        // namespace block
+        result.append("namespace ");
+        result.appendNewLine(currentNamespace);
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        classRenderResult.renderTo(result, 1);
+        result.cleanEndLines();
+
+        result.appendNewLine(TemplateHelper.BLOCK_CLOSE);
     }
 }

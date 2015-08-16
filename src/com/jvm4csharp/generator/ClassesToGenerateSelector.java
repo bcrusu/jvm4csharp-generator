@@ -101,8 +101,14 @@ class ClassesToGenerateSelector implements Iterable<XClassDefinition> {
 
         private boolean canGenerate(Class clazz) {
             boolean isPublic = Modifier.isPublic(clazz.getModifiers());
-            return isPublic && !clazz.isPrimitive() && !clazz.isArray() &&
-                    !clazz.isSynthetic() && !clazz.isLocalClass() && !clazz.isAnonymousClass();
+            if (!isPublic)
+                return false;
+
+            Class declaringClass = clazz.getDeclaringClass();
+            if (declaringClass != null)
+                return false;
+
+            return !clazz.isPrimitive() && !clazz.isArray() && !clazz.isSynthetic() && !clazz.isLocalClass() && !clazz.isAnonymousClass();
         }
     }
 }

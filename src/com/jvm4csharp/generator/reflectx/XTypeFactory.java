@@ -115,11 +115,11 @@ class XTypeFactory {
     private static String getNewTypeVariableName(String variableName) {
         String[] splits = variableName.split(variableName);
         if (splits.length <= 1)
-            return variableName + "_1";
+            return variableName + "1";
         else if (splits.length == 2) {
             int counter = Integer.parseInt(splits[1]);
             counter++;
-            return variableName + "_" + Integer.toString(counter);
+            return variableName + Integer.toString(counter);
         }
 
         throw new UnsupportedOperationException("Unhandled case");

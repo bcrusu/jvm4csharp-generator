@@ -6,22 +6,78 @@ import com.jvm4csharp.generator.reflectx.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CsTemplateHelper {
+class CsTemplateHelper {
     private static Set<String> CsKeywords = new HashSet<>();
 
-    public static void renderJavaProxyAttribute(CsGenerationResult result, XClass clazz) {
+    public static void renderClassDefinition(CsGenerationResult result, XClassDefinition classDefinition) {
+        XClass xClass = classDefinition.getXClass();
+        boolean isInterface = xClass.isInterface();
+
+        renderJavaProxyAttribute(result, xClass);
+
+        if (isInterface) {
+            result.append("public interface ");
+        } else {
+            result.append("public");
+            if (xClass.isAbstract())
+                result.append(" abstract");
+            if (needsPartialKeyword(xClass))
+                result.append(" partial");
+
+            result.append(" class ");
+        }
+
+        result.append(xClass.getSimpleName());
+        renderTypeParameters(result, classDefinition);
+
+        if (!isInterface)
+            renderBaseClass(result, classDefinition);
+
+        renderImplementedInterfaces(result, classDefinition);
+        renderTypeParameterConstraints(result, classDefinition);
+
+        result.newLine();
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        if (!isInterface)
+            renderConstructors(result, classDefinition, false);
+
+        result.ensureEmptyLine();
+        renderFields(result, classDefinition);
+
+        result.ensureEmptyLine();
+        renderClassMethods(result, classDefinition);
+
+        if (!isInterface) {
+            result.ensureEmptyLine();
+            renderNestedClasses(result, classDefinition);
+        }
+
+        result.cleanEndLines();
+        result.append(TemplateHelper.BLOCK_CLOSE);
+
+        result.ensureEmptyLine();
+        renderErasedProxyType(result, classDefinition);
+
+        if (isInterface && interfaceNeedsCompanionClass(classDefinition)) {
+            result.ensureEmptyLine();
+            renderInterfaceCompanionClass(result, classDefinition);
+        }
+    }
+
+    private static void renderJavaProxyAttribute(CsGenerationResult result, XClass clazz) {
         result.append("[JavaProxy(\"");
         result.append(clazz.getInternalTypeName());
         result.appendNewLine("\")]");
     }
 
-    public static void renderJavaSignature(CsGenerationResult result, String internalTypeName) {
+    private static void renderJavaSignature(CsGenerationResult result, String internalTypeName) {
         result.append("[JavaSignature(\"");
         result.append(internalTypeName);
         result.appendNewLine("\")]");
     }
 
-    public static void renderTypeParameters(CsGenerationResult result, IGenericDeclaration genericDeclaration) {
+    private static void renderTypeParameters(CsGenerationResult result, IGenericDeclaration genericDeclaration) {
         List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
 
         if (typeParameters.size() > 0) {
@@ -36,7 +92,21 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderImplementedInterfaces(CsGenerationResult result, XClassDefinition classDefinition) {
+    private static void renderActualTypeArguments(CsGenerationResult result, XClassDefinition classDefinition) {
+        List<XType> actualTypeArguments = classDefinition.getActualTypeArguments();
+        if (actualTypeArguments.size() > 0) {
+            result.append("<");
+            for (int i = 0; i < actualTypeArguments.size(); i++) {
+                XType actualTypeArgument = actualTypeArguments.get(i);
+                CsType.renderType(result, actualTypeArgument);
+                if (i < actualTypeArguments.size() - 1)
+                    result.append(", ");
+            }
+            result.append(">");
+        }
+    }
+
+    private static void renderImplementedInterfaces(CsGenerationResult result, XClassDefinition classDefinition) {
         List<XClassDefinition> implementedInterfaces = classDefinition.getImplementedInterfaces();
 
         if (classDefinition.getXClass().isInterface()) {
@@ -50,7 +120,9 @@ public class CsTemplateHelper {
                 result.append(", ");
 
             for (int i = 0; i < implementedInterfaces.size(); i++) {
-                CsType.renderTypeDefinition(result, implementedInterfaces.get(i));
+                XClassDefinition implementedInterface = implementedInterfaces.get(i);
+                CsType.renderSimpleTypeName(result, implementedInterface);
+                renderActualTypeArguments(result, implementedInterface);
 
                 if (i < implementedInterfaces.size() - 1)
                     result.append(", ");
@@ -58,7 +130,7 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderBaseClass(CsGenerationResult result, XClassDefinition classDefinition) {
+    private static void renderBaseClass(CsGenerationResult result, XClassDefinition classDefinition) {
         if (classDefinition.getXClass().isClass(Object.class))
             return;
 
@@ -77,10 +149,11 @@ public class CsTemplateHelper {
             return;
         }
 
-        CsType.renderTypeDefinition(result, superclass);
+        CsType.renderSimpleTypeName(result, superclass);
+        renderActualTypeArguments(result, superclass);
     }
 
-    public static void renderConstructors(CsGenerationResult result, XClassDefinition classDefinition, boolean callMatchingBaseConstructor) {
+    private static void renderConstructors(CsGenerationResult result, XClassDefinition classDefinition, boolean callMatchingBaseConstructor) {
         XClass xClass = classDefinition.getXClass();
         List<XConstructor> constructors = classDefinition.getConstructors();
 
@@ -89,7 +162,7 @@ public class CsTemplateHelper {
         if (!xClass.isClass(Object.class) && !xClass.isClass(Throwable.class)) {
             tmpResult.ensureEmptyLine();
             tmpResult.append("protected ");
-            CsType.renderSimpleTypeName(tmpResult, classDefinition);
+            tmpResult.append(xClass.getSimpleName());
             tmpResult.append("(JavaVoid v) : base(v) {}");
         }
 
@@ -111,14 +184,14 @@ public class CsTemplateHelper {
             throw new UnsupportedOperationException("Generic constructor declarations are not supported.");
 
         String internalSignature = constructor.getInternalSignature();
-        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(constructor);
+        String[] parameterNames = getEscapedParameterNames(constructor);
         XClassDefinition declaringClass = constructor.getDeclaringClass();
-        XClass clazz = declaringClass.getXClass();
+        XClass xClass = declaringClass.getXClass();
 
         // signature
         result.append("public");
         result.append(TemplateHelper.SPACE);
-        CsType.renderSimpleTypeName(result, clazz);
+        result.append(xClass.getSimpleName());
         renderExecutableParameters(result, constructor, callMatchingBaseConstructor);
 
         if (callMatchingBaseConstructor) {
@@ -128,7 +201,7 @@ public class CsTemplateHelper {
             }
             result.append(" {}");
         } else {
-            if (!clazz.isClass(Object.class) && !clazz.isClass(Throwable.class))
+            if (!xClass.isClass(Object.class) && !xClass.isClass(Throwable.class))
                 result.append(" : base(JavaVoid.Void)");
 
             result.newLine();
@@ -136,7 +209,7 @@ public class CsTemplateHelper {
 
             // body
             result.append(TemplateHelper.TAB);
-            result.append("CallConstructor(\"");
+            result.append("Instance.CallConstructor(\"");
             result.append(internalSignature);
             result.append("\"");
 
@@ -150,9 +223,9 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderExecutableParameters(CsGenerationResult result, XExecutable executable, boolean erasedParameterTypes) {
+    private static void renderExecutableParameters(CsGenerationResult result, XExecutable executable, boolean erasedParameterTypes) {
         List<XType> parameterTypes = executable.getParameterTypes();
-        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(executable);
+        String[] parameterNames = getEscapedParameterNames(executable);
 
         result.append('(');
         for (int i = 0; i < parameterNames.length; i++) {
@@ -170,8 +243,8 @@ public class CsTemplateHelper {
         result.append(")");
     }
 
-    public static void renderExecutableCallParameters(CsGenerationResult result, XExecutable executable) {
-        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(executable);
+    private static void renderExecutableCallParameters(CsGenerationResult result, XExecutable executable) {
+        String[] parameterNames = getEscapedParameterNames(executable);
 
         result.append("(");
         for (int j = 0; j < parameterNames.length; j++) {
@@ -183,7 +256,7 @@ public class CsTemplateHelper {
         result.append(")");
     }
 
-    public static void renderTypeParameterConstraints(CsGenerationResult result, IGenericDeclaration genericDeclaration) {
+    private static void renderTypeParameterConstraints(CsGenerationResult result, IGenericDeclaration genericDeclaration) {
         List<XTypeVariable> typeParameters = genericDeclaration.getTypeParameters();
         for (XTypeVariable typeParameter : typeParameters) {
             List<XType> bounds = typeParameter.getBounds();
@@ -206,14 +279,14 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderErasedProxyType(CsGenerationResult result, XClassDefinition classDefinition) {
+    private static void renderErasedProxyType(CsGenerationResult result, XClassDefinition classDefinition) {
         XClass xClass = classDefinition.getXClass();
         if (!xClass.hasTypeParameters())
             return;
 
         result.cleanEndLines();
         result.ensureEmptyLine();
-        CsTemplateHelper.renderJavaProxyAttribute(result, xClass);
+        renderJavaProxyAttribute(result, xClass);
 
         result.append("public");
         if (!xClass.isInterface() && xClass.isAbstract())
@@ -226,7 +299,7 @@ public class CsTemplateHelper {
         else
             result.append(" class ");
 
-        CsType.renderSimpleTypeName(result, classDefinition);
+        result.append(xClass.getSimpleName());
         result.append(" : ");
         CsType.renderErasedType(result, xClass);
 
@@ -242,7 +315,7 @@ public class CsTemplateHelper {
         result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
-    public static void renderClassMethods(CsGenerationResult result, XClassDefinition classDefinition) {
+    private static void renderClassMethods(CsGenerationResult result, XClassDefinition classDefinition) {
         class MethodToRenderInfo {
             public XMethod method;
             public boolean isNew;
@@ -401,43 +474,15 @@ public class CsTemplateHelper {
         tmpResult.renderTo(result, 1);
     }
 
-    public static void renderInterfaceMethods(CsGenerationResult result, XClassDefinition classDefinition, boolean forCompanionClass) {
-        if (!classDefinition.getXClass().isInterface())
-            throw new IllegalArgumentException("Expected interface definition.");
-
-        List<XMethod> methodsToRender = classDefinition.getDeclaredMethods();
-
-        if (forCompanionClass)
-            methodsToRender = methodsToRender.stream()
-                    .filter(XMethod::isStatic)
-                    .collect(Collectors.toList());
-        else
-            methodsToRender = methodsToRender.stream()
-                    .filter(x -> !x.isStatic())
-                    .collect(Collectors.toList());
-
-        CsGenerationResult tmpResult = new CsGenerationResult();
-
-        for (XMethod aMethodsToRender : methodsToRender) {
-            tmpResult.ensureEmptyLine();
-            renderMethod(tmpResult, classDefinition, aMethodsToRender, false, false);
-        }
-
-        if (!tmpResult.isEmpty())
-            result.ensureEmptyLine();
-
-        tmpResult.renderTo(result, 1);
-    }
-
     //TODO: use C# 'params' keyword for var args
-    public static void renderMethod(CsGenerationResult result, XClassDefinition classDefinition,
-                                    XMethod method, boolean isExplicit, boolean isNew) {
+    private static void renderMethod(CsGenerationResult result, XClassDefinition classDefinition,
+                                     XMethod method, boolean isExplicit, boolean isNew) {
         String internalSignature = method.getInternalSignature();
-        String[] parameterNames = CsTemplateHelper.getEscapedParameterNames(method);
+        String[] parameterNames = getEscapedParameterNames(method);
 
         renderJavaSignature(result, internalSignature);
 
-        if (!isExplicit && !classDefinition.getXClass().isInterface())
+        if (method.isStatic() || (!isExplicit && !classDefinition.getXClass().isInterface()))
             result.append("public ");
         if (isNew)
             result.append("new ");
@@ -447,10 +492,11 @@ public class CsTemplateHelper {
         CsType.renderType(result, method.getReturnType());
         result.append(TemplateHelper.SPACE);
         if (isExplicit) {
-            CsType.renderTypeDefinition(result, method.getDeclaringClass());
+            CsType.renderSimpleTypeName(result, method.getDeclaringClass());
+            renderActualTypeArguments(result, method.getDeclaringClass());
             result.append(".");
         }
-        result.append(CsTemplateHelper.escapeCsKeyword(method.getName()));
+        result.append(escapeCsKeyword(method.getName()));
 
         renderTypeParameters(result, method);
         renderExecutableParameters(result, method, false);
@@ -459,7 +505,7 @@ public class CsTemplateHelper {
             renderTypeParameterConstraints(result, method);
 
         // body
-        if (classDefinition.getXClass().isInterface()) {
+        if (classDefinition.getXClass().isInterface() && !method.isStatic()) {
             result.append(";");
         } else {
             result.newLine();
@@ -469,10 +515,12 @@ public class CsTemplateHelper {
             if (!method.isVoidReturnType())
                 result.append("return ");
 
-            result.append("Call");
             if (method.isStatic())
-                result.append("Static");
-            result.append("Method");
+                result.append("Static.");
+            else
+                result.append("Instance.");
+
+            result.append("CallMethod");
 
             if (!method.isVoidReturnType()) {
                 result.append("<");
@@ -482,9 +530,8 @@ public class CsTemplateHelper {
 
             result.append('(');
             if (method.isStatic()) {
-                result.append("typeof(");
-                CsType.renderTypeDefinition(result, method.getDeclaringClass());
-                result.append("), ");
+                renderTypeofExpression(result, method.getDeclaringClass());
+                result.append(", ");
             }
             result.append("\"");
             result.append(method.getName());
@@ -504,8 +551,12 @@ public class CsTemplateHelper {
         }
     }
 
-    public static void renderFields(CsGenerationResult result, XClassDefinition classDefinition) {
+    private static void renderFields(CsGenerationResult result, XClassDefinition classDefinition) {
         List<XField> fields = classDefinition.getFields();
+        if (classDefinition.getXClass().isInterface())
+            fields = fields.stream()
+                    .filter(x -> !x.isStatic())
+                    .collect(Collectors.toList());
 
         CsGenerationResult tmpResult = new CsGenerationResult();
 
@@ -513,9 +564,6 @@ public class CsTemplateHelper {
             tmpResult.ensureEmptyLine();
             renderField(tmpResult, field);
         }
-
-        if (!tmpResult.isEmpty())
-            result.ensureEmptyLine();
 
         tmpResult.renderTo(result, 1);
     }
@@ -531,24 +579,27 @@ public class CsTemplateHelper {
 
         CsType.renderType(result, field.getType());
         result.append(TemplateHelper.SPACE);
-        result.append(CsTemplateHelper.escapeCsKeyword(field.getName()));
+        result.append(escapeCsKeyword(field.getName()));
 
         result.newLine();
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
         // getter
         result.append(TemplateHelper.TAB);
-        result.append("get { return Get");
+        result.append("get { return ");
+
         if (field.isStatic())
-            result.append("Static");
-        result.append("Field<");
+            result.append("Static.");
+        else
+            result.append("Instance.");
+
+        result.append("GetField<");
         CsType.renderType(result, field.getType());
         result.append(">(");
 
         if (field.isStatic()) {
-            result.append("typeof(");
-            CsType.renderUnboundType(result, field.getDeclaringClass());
-            result.append("), ");
+            renderTypeofExpression(result, field.getDeclaringClass());
+            result.append(", ");
         }
 
         result.append("\"");
@@ -562,14 +613,17 @@ public class CsTemplateHelper {
             result.newLine();
             result.append(TemplateHelper.TAB);
 
-            result.append("set { Set");
+            result.append("set { ");
+
             if (field.isStatic())
-                result.append("Static");
-            result.append("Field(");
+                result.append("Static.");
+            else
+                result.append("Instance.");
+
+            result.append("SetField(");
             if (field.isStatic()) {
-                result.append("typeof(");
-                CsType.renderUnboundType(result, field.getDeclaringClass());
-                result.append("), ");
+                renderTypeofExpression(result, field.getDeclaringClass());
+                result.append(", ");
             }
             result.append("\"");
             result.append(field.getName());
@@ -582,12 +636,92 @@ public class CsTemplateHelper {
         result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
+    private static void renderInterfaceCompanionClass(CsGenerationResult result, XClassDefinition classDefinition) {
+        result.append("public static class ");
+        result.append(classDefinition.getXClass().getSimpleName());
+        result.appendNewLine("_");
+
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+        CsGenerationResult tmpResult = new CsGenerationResult();
+
+        tmpResult.append("private static readonly JavaProxyOperations.Static Static = JavaProxyOperations.Static.Singleton;");
+
+        // static fields
+        List<XField> fields = classDefinition.getFields()
+                .stream()
+                .filter(XField::isStatic)
+                .collect(Collectors.toList());
+
+        for (XField field : fields) {
+            tmpResult.ensureEmptyLine();
+            renderField(tmpResult, field);
+        }
+
+        // static methods
+        List<XMethod> staticMethods = classDefinition.getDeclaredMethods()
+                .stream()
+                .filter(XMethod::isStatic)
+                .collect(Collectors.toList());
+
+        for (XMethod aMethodsToRender : staticMethods) {
+            tmpResult.ensureEmptyLine();
+            renderMethod(tmpResult, classDefinition, aMethodsToRender, false, false);
+        }
+
+        // nested classes
+        result.ensureEmptyLine();
+        renderNestedClasses(result, classDefinition);
+
+        tmpResult.renderTo(result, 1);
+        result.append(TemplateHelper.BLOCK_CLOSE);
+    }
+
+    private static boolean interfaceNeedsCompanionClass(XClassDefinition classDefinition) {
+        XClass xClass = classDefinition.getXClass();
+
+        if (!xClass.isInterface())
+            return false;
+
+        return classDefinition.getDeclaredMethods().stream().anyMatch(XMethod::isStatic) ||
+                classDefinition.getFields().stream().anyMatch(XField::isStatic) ||
+                classDefinition.getDeclaredClasses().size() > 0;
+    }
+
+    private static void renderNestedClasses(CsGenerationResult result, XClassDefinition classDefinition) {
+        List<XClassDefinition> declaredClasses = classDefinition.getDeclaredClasses();
+
+        CsGenerationResult tmpResult = new CsGenerationResult();
+
+        for (XClassDefinition clazz : declaredClasses) {
+            tmpResult.ensureEmptyLine();
+            renderClassDefinition(tmpResult, clazz);
+        }
+
+        tmpResult.renderTo(result, 1);
+    }
+
+    private static void renderTypeofExpression(CsGenerationResult result, XClassDefinition classDefinition) {
+        int typeParametersCount = classDefinition.getTypeParameters().size();
+
+        result.append("typeof(");
+        result.append(classDefinition.getXClass().getSimpleName());
+
+        if (typeParametersCount > 0) {
+            result.append("<");
+            for (int i = 0; i < typeParametersCount - 1; i++)
+                result.append(",");
+            result.append(">");
+        }
+
+        result.append(")");
+    }
+
     public static String[] getEscapedParameterNames(XExecutable executable) {
         List<String> names = executable.getParameterNames();
         String[] result = new String[names.size()];
 
         for (int i = 0; i < names.size(); i++)
-            result[i] = CsTemplateHelper.escapeCsKeyword(names.get(i));
+            result[i] = escapeCsKeyword(names.get(i));
 
         return result;
     }
@@ -599,7 +733,7 @@ public class CsTemplateHelper {
         return str;
     }
 
-    public static boolean needsPartialKeyword(XClass clazz) {
+    private static boolean needsPartialKeyword(XClass clazz) {
         return clazz.isClass(Object.class) || clazz.isClass(Throwable.class) ||
                 clazz.isClass(Class.class) || clazz.isClass(String.class);
     }

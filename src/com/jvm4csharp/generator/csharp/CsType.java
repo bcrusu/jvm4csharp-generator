@@ -8,34 +8,6 @@ public class CsType {
     public static final String IJavaObjectTypeName = "IJavaObject";
     public static final String jvm4csharpArrayUtilsNamespace = "jvm4csharp.ArrayUtils";
 
-    public static void renderUnboundType(CsGenerationResult result, XClassDefinition classDefinition) {
-        renderSimpleTypeName(result, classDefinition);
-
-        int typeParametersCount = classDefinition.getTypeParameters().size();
-        if (typeParametersCount > 0) {
-            result.append("<");
-            for (int i = 0; i < typeParametersCount - 1; i++)
-                result.append(",");
-            result.append(">");
-        }
-    }
-
-    public static void renderTypeDefinition(CsGenerationResult result, XClassDefinition classDefinition) {
-        renderSimpleTypeName(result, classDefinition);
-
-        List<XType> actualTypeArguments = classDefinition.getActualTypeArguments();
-        if (actualTypeArguments.size() > 0) {
-            result.append("<");
-            for (int i = 0; i < actualTypeArguments.size(); i++) {
-                XType actualTypeArgument = actualTypeArguments.get(i);
-                renderType(result, actualTypeArgument);
-                if (i < actualTypeArguments.size() - 1)
-                    result.append(", ");
-            }
-            result.append(">");
-        }
-    }
-
     public static void renderType(CsGenerationResult result, XType xType) {
         if (xType instanceof XClass) {
             XClass xClass = (XClass) xType;
@@ -189,7 +161,6 @@ public class CsType {
         } else if (xType instanceof XParameterizedType) {
             XParameterizedType xParameterizedType = (XParameterizedType) xType;
             renderSimpleTypeName(result, xParameterizedType.getRawType());
-            return;
         } else if (xType instanceof XWildcardType) {
             // C# doesn't have a similar feature; will default to Object
             //TODO: use upper bounds
@@ -215,7 +186,11 @@ public class CsType {
         String className = xClass.getSimpleName();
         XClass declaringClass = xClass.getDeclaringClass();
         while (declaringClass != null) {
-            className = declaringClass.getSimpleName() + "_" + className;
+            className = "." + className;
+            if (declaringClass.isInterface())
+                className = "_" + className;
+
+            className = declaringClass.getSimpleName() + className;
             declaringClass = declaringClass.getDeclaringClass();
         }
 
@@ -243,12 +218,5 @@ public class CsType {
         }
 
         return sb.toString();
-    }
-
-    //TODO: remove
-    public static String getSimpleTypeName(XClass xClass) {
-        CsGenerationResult tmpResult = new CsGenerationResult();
-        renderSimpleTypeName(tmpResult, xClass);
-        return tmpResult.toString().trim();
     }
 }

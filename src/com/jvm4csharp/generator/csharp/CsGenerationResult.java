@@ -31,7 +31,7 @@ public class CsGenerationResult extends GenerationResult {
     }
 
     public void cleanEndLines() {
-        if (_currentLine.length() > 0) {
+        if (_currentLine.toString().trim().length() > 0) {
             newLine();
             return;
         }

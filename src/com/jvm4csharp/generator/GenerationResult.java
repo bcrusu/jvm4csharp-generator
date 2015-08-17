@@ -41,8 +41,7 @@ public class GenerationResult {
 
     public void renderTo(GenerationResult gr, int indentationLevel) {
         String indentation = TemplateHelper.getIndentation(indentationLevel);
-        for (int i = 0; i < _lines.size(); i++) {
-            String line = _lines.get(i);
+        for (String line : _lines) {
             if (indentationLevel > 0)
                 gr.append(indentation);
 
@@ -58,8 +57,7 @@ public class GenerationResult {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < _lines.size(); i++) {
-            String line = _lines.get(i);
+        for (String line : _lines) {
             sb.append(line);
             sb.append(TemplateHelper.NEWLINE);
         }

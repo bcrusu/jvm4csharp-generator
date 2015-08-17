@@ -40,7 +40,7 @@ class CsTemplateHelper {
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
         if (!isInterface)
-            renderConstructors(result, classDefinition, false);
+            renderConstructors(result, classDefinition);
 
         result.ensureEmptyLine();
         renderFields(result, classDefinition);
@@ -48,7 +48,7 @@ class CsTemplateHelper {
         result.ensureEmptyLine();
         renderClassMethods(result, classDefinition);
 
-        if (!isInterface) {
+        if (!isInterface && !xClass.hasTypeParameters()) {
             result.ensureEmptyLine();
             renderNestedClasses(result, classDefinition);
         }
@@ -56,18 +56,15 @@ class CsTemplateHelper {
         result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);
 
-        result.ensureEmptyLine();
-        renderErasedProxyType(result, classDefinition);
-
-        if (isInterface && interfaceNeedsCompanionClass(classDefinition)) {
-            result.ensureEmptyLine();
-            renderInterfaceCompanionClass(result, classDefinition);
-        }
+        renderClassCompanion(result, classDefinition);
+        renderInterfaceCompanion(result, classDefinition);
     }
 
     private static void renderJavaProxyAttribute(CsGenerationResult result, XClass clazz) {
+        String internalTypeName = clazz.getInternalTypeName();
+
         result.append("[JavaProxy(\"");
-        result.append(clazz.getInternalTypeName());
+        result.append(internalTypeName.substring(1, internalTypeName.length() - 1));
         result.appendNewLine("\")]");
     }
 
@@ -141,6 +138,12 @@ class CsTemplateHelper {
             return;
         }
 
+        if (classDefinition.getXClass().isClass(Enum.class)) {
+            result.append("Enum");
+            result.addUsedNamespace("java.lang");
+            return;
+        }
+
         XClassDefinition superclass = classDefinition.getSuperclass();
 
         if (superclass.getXClass().isClass(Object.class)) {
@@ -153,7 +156,7 @@ class CsTemplateHelper {
         renderActualTypeArguments(result, superclass);
     }
 
-    private static void renderConstructors(CsGenerationResult result, XClassDefinition classDefinition, boolean callMatchingBaseConstructor) {
+    private static void renderConstructors(CsGenerationResult result, XClassDefinition classDefinition) {
         XClass xClass = classDefinition.getXClass();
         List<XConstructor> constructors = classDefinition.getConstructors();
 
@@ -163,13 +166,13 @@ class CsTemplateHelper {
             tmpResult.ensureEmptyLine();
             tmpResult.append("protected ");
             tmpResult.append(xClass.getSimpleName());
-            tmpResult.append("(JavaVoid v) : base(v) {}");
+            tmpResult.append("(ProxyCtor p) : base(p) {}");
         }
 
         if (!xClass.isAbstract()) {
             for (XConstructor constructor : constructors) {
                 tmpResult.ensureEmptyLine();
-                renderConstructor(tmpResult, constructor, callMatchingBaseConstructor);
+                renderConstructor(tmpResult, constructor);
             }
         }
 
@@ -179,7 +182,7 @@ class CsTemplateHelper {
         tmpResult.renderTo(result, 1);
     }
 
-    private static void renderConstructor(CsGenerationResult result, XConstructor constructor, boolean callMatchingBaseConstructor) {
+    private static void renderConstructor(CsGenerationResult result, XConstructor constructor) {
         if (constructor.hasTypeParameters())
             throw new UnsupportedOperationException("Generic constructor declarations are not supported.");
 
@@ -192,65 +195,40 @@ class CsTemplateHelper {
         result.append("public");
         result.append(TemplateHelper.SPACE);
         result.append(xClass.getSimpleName());
-        renderExecutableParameters(result, constructor, callMatchingBaseConstructor);
+        renderExecutableParameters(result, constructor);
 
-        if (callMatchingBaseConstructor) {
-            if (parameterNames.length > 0) {
-                result.append(" : base");
-                renderExecutableCallParameters(result, constructor);
-            }
-            result.append(" {}");
-        } else {
-            if (!xClass.isClass(Object.class) && !xClass.isClass(Throwable.class))
-                result.append(" : base(JavaVoid.Void)");
+        if (!xClass.isClass(Object.class) && !xClass.isClass(Throwable.class))
+            result.append(" : base(ProxyCtor.I)");
 
-            result.newLine();
-            result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+        result.newLine();
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
-            // body
-            result.append(TemplateHelper.TAB);
-            result.append("Instance.CallConstructor(\"");
-            result.append(internalSignature);
-            result.append("\"");
+        // body
+        result.append(TemplateHelper.TAB);
+        result.append("Instance.CallConstructor(\"");
+        result.append(internalSignature);
+        result.append("\"");
 
-            for (String csParameterName : parameterNames) {
-                result.append(", ");
-                result.append(csParameterName);
-            }
-
-            result.appendNewLine(");");
-            result.append(TemplateHelper.BLOCK_CLOSE);
+        for (String csParameterName : parameterNames) {
+            result.append(", ");
+            result.append(csParameterName);
         }
+
+        result.appendNewLine(");");
+        result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
-    private static void renderExecutableParameters(CsGenerationResult result, XExecutable executable, boolean erasedParameterTypes) {
+    private static void renderExecutableParameters(CsGenerationResult result, XExecutable executable) {
         List<XType> parameterTypes = executable.getParameterTypes();
         String[] parameterNames = getEscapedParameterNames(executable);
 
         result.append('(');
         for (int i = 0; i < parameterNames.length; i++) {
-            if (erasedParameterTypes)
-                CsType.renderErasedType(result, parameterTypes.get(i));
-            else
-                CsType.renderType(result, parameterTypes.get(i));
-
+            CsType.renderType(result, parameterTypes.get(i));
             result.append(TemplateHelper.SPACE);
             result.append(parameterNames[i]);
 
             if (i < parameterNames.length - 1)
-                result.append(", ");
-        }
-        result.append(")");
-    }
-
-    private static void renderExecutableCallParameters(CsGenerationResult result, XExecutable executable) {
-        String[] parameterNames = getEscapedParameterNames(executable);
-
-        result.append("(");
-        for (int j = 0; j < parameterNames.length; j++) {
-            result.append(parameterNames[j]);
-
-            if (j < parameterNames.length - 1)
                 result.append(", ");
         }
         result.append(")");
@@ -277,42 +255,6 @@ class CsTemplateHelper {
                     result.append(", ");
             }
         }
-    }
-
-    private static void renderErasedProxyType(CsGenerationResult result, XClassDefinition classDefinition) {
-        XClass xClass = classDefinition.getXClass();
-        if (!xClass.hasTypeParameters())
-            return;
-
-        result.cleanEndLines();
-        result.ensureEmptyLine();
-        renderJavaProxyAttribute(result, xClass);
-
-        result.append("public");
-        if (!xClass.isInterface() && xClass.isAbstract())
-            result.append(" abstract");
-        if (needsPartialKeyword(xClass))
-            result.append(" partial");
-
-        if (xClass.isInterface())
-            result.append(" interface ");
-        else
-            result.append(" class ");
-
-        result.append(xClass.getSimpleName());
-        result.append(" : ");
-        CsType.renderErasedType(result, xClass);
-
-        result.newLine();
-        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
-
-        // constructors
-        if (!xClass.isInterface()) {
-            renderConstructors(result, classDefinition, true);
-        }
-
-        result.cleanEndLines();
-        result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
     private static void renderClassMethods(CsGenerationResult result, XClassDefinition classDefinition) {
@@ -499,7 +441,7 @@ class CsTemplateHelper {
         result.append(escapeCsKeyword(method.getName()));
 
         renderTypeParameters(result, method);
-        renderExecutableParameters(result, method, false);
+        renderExecutableParameters(result, method);
 
         if (!isExplicit)
             renderTypeParameterConstraints(result, method);
@@ -636,7 +578,44 @@ class CsTemplateHelper {
         result.append(TemplateHelper.BLOCK_CLOSE);
     }
 
-    private static void renderInterfaceCompanionClass(CsGenerationResult result, XClassDefinition classDefinition) {
+    private static void renderClassCompanion(CsGenerationResult result, XClassDefinition classDefinition) {
+        XClass xClass = classDefinition.getXClass();
+
+        if (xClass.isInterface())
+            return;
+        if (classDefinition.getDeclaredClasses().size() == 0)
+            return;
+        if (!xClass.hasTypeParameters())
+            return;
+
+        result.cleanEndLines();
+        result.ensureEmptyLine();
+
+        result.append("public class ");
+        result.appendNewLine(xClass.getSimpleName());
+        result.appendNewLine(TemplateHelper.BLOCK_OPEN);
+
+        // nested classes
+        result.ensureEmptyLine();
+        renderNestedClasses(result, classDefinition);
+
+        result.cleanEndLines();
+        result.append(TemplateHelper.BLOCK_CLOSE);
+    }
+
+    private static void renderInterfaceCompanion(CsGenerationResult result, XClassDefinition classDefinition) {
+        XClass xClass = classDefinition.getXClass();
+
+        if (!xClass.isInterface())
+            return;
+        if (!(classDefinition.getDeclaredMethods().stream().anyMatch(XMethod::isStatic) ||
+                classDefinition.getFields().stream().anyMatch(XField::isStatic) ||
+                classDefinition.getDeclaredClasses().size() > 0))
+            return;
+
+        result.cleanEndLines();
+        result.ensureEmptyLine();
+
         result.append("public static class ");
         result.append(classDefinition.getXClass().getSimpleName());
         result.appendNewLine("_");
@@ -668,23 +647,13 @@ class CsTemplateHelper {
             renderMethod(tmpResult, classDefinition, aMethodsToRender, false, false);
         }
 
+        tmpResult.renderTo(result, 1);
+
         // nested classes
         result.ensureEmptyLine();
         renderNestedClasses(result, classDefinition);
 
-        tmpResult.renderTo(result, 1);
         result.append(TemplateHelper.BLOCK_CLOSE);
-    }
-
-    private static boolean interfaceNeedsCompanionClass(XClassDefinition classDefinition) {
-        XClass xClass = classDefinition.getXClass();
-
-        if (!xClass.isInterface())
-            return false;
-
-        return classDefinition.getDeclaredMethods().stream().anyMatch(XMethod::isStatic) ||
-                classDefinition.getFields().stream().anyMatch(XField::isStatic) ||
-                classDefinition.getDeclaredClasses().size() > 0;
     }
 
     private static void renderNestedClasses(CsGenerationResult result, XClassDefinition classDefinition) {

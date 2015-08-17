@@ -84,6 +84,10 @@ public class XTypeVariable extends XType {
                 .collect(Collectors.toList());
     }
 
+    public boolean hasBounds() {
+        return getBounds().size() > 0;
+    }
+
     private static String getGenericDeclarationDisplayName(GenericDeclaration genericDeclaration) {
         if (genericDeclaration instanceof Class)
             return "class " + ((Class) genericDeclaration).getSimpleName();

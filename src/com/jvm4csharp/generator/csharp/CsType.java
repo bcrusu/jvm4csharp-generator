@@ -14,6 +14,9 @@ public class CsType {
 
             if (xClass.isVoid()) {
                 result.append("void");
+            } else if (xClass.isClass(Enum.class)) {
+                result.append("Enum");
+                result.addUsedNamespace("java.lang");
             } else if (xClass.isPrimitive()) {
                 String csPrimitive;
                 if (xClass.isClass(Boolean.TYPE))
@@ -105,72 +108,20 @@ public class CsType {
             }
             result.append(">");
         } else if (xType instanceof XWildcardType) {
-            // C# doesn't have a similar feature; will default to Object
-            result.append(IJavaObjectTypeName);
+            XWildcardType xWildcardType = (XWildcardType) xType;
+
+            if (xWildcardType.getUpperBound() != null)
+                renderType(result, xWildcardType.getUpperBound());
+            else {
+                // C# doesn't have a similar feature for lower bounds; will default to Object
+                result.append(IJavaObjectTypeName);
+            }
         } else if (xType instanceof XGenericArrayType) {
             XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;
             XType genericComponentType = xGenericArrayType.getGenericComponentType();
 
             result.append("ObjectArray<");
             renderType(result, genericComponentType);
-            result.append(">");
-            result.addUsedNamespace(jvm4csharpArrayUtilsNamespace);
-        } else
-            throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", xType));
-    }
-
-    public static void renderErasedType(CsGenerationResult result, XType xType) {
-        if (xType instanceof XClass) {
-            XClass xClass = (XClass) xType;
-
-            if (xClass.isVoid() || xClass.isPrimitive() || xClass.isArray()) {
-                renderType(result, xType);
-            } else {
-                renderSimpleTypeName(result, xClass);
-
-                List<XTypeVariable> typeParameters = xClass.getTypeParameters();
-                if (typeParameters.size() > 0) {
-                    result.append("<");
-                    for (int i = 0; i < typeParameters.size(); i++) {
-                        renderErasedType(result, typeParameters.get(i));
-
-                        if (i < typeParameters.size() - 1)
-                            result.append(", ");
-                    }
-                    result.append(">");
-                }
-            }
-        } else if (xType instanceof XTypeVariable) {
-            XTypeVariable xTypeVariable = (XTypeVariable) xType;
-            XType resolvedType = xTypeVariable.getResolvedType();
-
-            if (!(resolvedType instanceof XTypeVariable)) {
-                renderType(result, resolvedType);
-            } else {
-                List<XType> bounds = ((XTypeVariable) resolvedType).getBounds();
-                if (bounds.size() > 1)
-                    throw new IllegalArgumentException(String.format("Cannot render erased type for type variable with multiple bounds: '%1s'", resolvedType));
-
-                if (bounds.size() == 0) {
-                    result.append(IJavaObjectTypeName);
-                    return;
-                }
-
-                renderErasedType(result, bounds.get(0));
-            }
-        } else if (xType instanceof XParameterizedType) {
-            XParameterizedType xParameterizedType = (XParameterizedType) xType;
-            renderSimpleTypeName(result, xParameterizedType.getRawType());
-        } else if (xType instanceof XWildcardType) {
-            // C# doesn't have a similar feature; will default to Object
-            //TODO: use upper bounds
-            result.append(IJavaObjectTypeName);
-        } else if (xType instanceof XGenericArrayType) {
-            XGenericArrayType xGenericArrayType = (XGenericArrayType) xType;
-            XType genericComponentType = xGenericArrayType.getGenericComponentType();
-
-            result.append("ObjectArray<");
-            renderErasedType(result, genericComponentType);
             result.append(">");
             result.addUsedNamespace(jvm4csharpArrayUtilsNamespace);
         } else

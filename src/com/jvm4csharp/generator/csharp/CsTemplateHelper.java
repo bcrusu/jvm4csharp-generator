@@ -16,15 +16,13 @@ class CsTemplateHelper {
         renderJavaProxyAttribute(result, xClass);
 
         if (isInterface) {
-            result.append("public interface ");
+            result.append("public partial interface ");
         } else {
             result.append("public");
             if (xClass.isAbstract())
                 result.append(" abstract");
-            if (needsPartialKeyword(xClass))
-                result.append(" partial");
 
-            result.append(" class ");
+            result.append(" partial class ");
         }
 
         result.append(xClass.getSimpleName());
@@ -700,11 +698,6 @@ class CsTemplateHelper {
             return "@" + str;
 
         return str;
-    }
-
-    private static boolean needsPartialKeyword(XClass clazz) {
-        return clazz.isClass(Object.class) || clazz.isClass(Throwable.class) ||
-                clazz.isClass(Class.class) || clazz.isClass(String.class);
     }
 
     static {

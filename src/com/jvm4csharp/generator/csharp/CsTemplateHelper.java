@@ -46,11 +46,6 @@ class CsTemplateHelper {
         result.ensureEmptyLine();
         renderClassMethods(result, classDefinition);
 
-        if (!isInterface && !xClass.hasTypeParameters()) {
-            result.ensureEmptyLine();
-            renderNestedClasses(result, classDefinition);
-        }
-
         result.cleanEndLines();
         result.append(TemplateHelper.BLOCK_CLOSE);
 
@@ -583,14 +578,13 @@ class CsTemplateHelper {
             return;
         if (classDefinition.getDeclaredClasses().size() == 0)
             return;
-        if (!xClass.hasTypeParameters())
-            return;
 
         result.cleanEndLines();
         result.ensureEmptyLine();
 
-        result.append("public class ");
-        result.appendNewLine(xClass.getSimpleName());
+        result.append("public static partial class ");
+        result.append(xClass.getSimpleName());
+        result.appendNewLine("_");
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);
 
         // nested classes
@@ -614,8 +608,8 @@ class CsTemplateHelper {
         result.cleanEndLines();
         result.ensureEmptyLine();
 
-        result.append("public static class ");
-        result.append(classDefinition.getXClass().getSimpleName());
+        result.append("public static partial class ");
+        result.append(xClass.getSimpleName());
         result.appendNewLine("_");
 
         result.appendNewLine(TemplateHelper.BLOCK_OPEN);

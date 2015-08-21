@@ -6,7 +6,7 @@ import java.util.List;
 
 public class CsType {
     public static final String IJavaObjectTypeName = "IJavaObject";
-    public static final String jvm4csharpArrayUtilsNamespace = "jvm4csharp.ArrayUtils";
+    public static final String jvm4csharpArraysNamespace = "jvm4csharp.Arrays";
 
     public static void renderType(CsGenerationResult result, XType xType) {
         if (xType instanceof XClass) {
@@ -40,7 +40,7 @@ public class CsType {
 
                 result.append(csPrimitive);
             } else if (xClass.isArray()) {
-                result.addUsedNamespace(jvm4csharpArrayUtilsNamespace);
+                result.addUsedNamespace(jvm4csharpArraysNamespace);
                 XClass elementType = xClass.getArrayComponentType();
                 if (elementType.isPrimitive()) {
                     String csPrimitiveArray;
@@ -123,7 +123,7 @@ public class CsType {
             result.append("ObjectArray<");
             renderType(result, genericComponentType);
             result.append(">");
-            result.addUsedNamespace(jvm4csharpArrayUtilsNamespace);
+            result.addUsedNamespace(jvm4csharpArraysNamespace);
         } else
             throw new IllegalArgumentException(String.format("Unrecognized type '%1s'.", xType));
     }
@@ -137,11 +137,7 @@ public class CsType {
         String className = xClass.getSimpleName();
         XClass declaringClass = xClass.getDeclaringClass();
         while (declaringClass != null) {
-            className = "." + className;
-            if (declaringClass.isInterface())
-                className = "_" + className;
-
-            className = declaringClass.getSimpleName() + className;
+            className = declaringClass.getSimpleName() + "_." + className;
             declaringClass = declaringClass.getDeclaringClass();
         }
 
